@@ -156,7 +156,7 @@ def testcharge():
     payload['chargeRate']=2200
     setChargeRate(payload)
 
-def rebootinvertor():
+def rebootinverter():
     temp={}
     try:
         logger.info("Rebooting Invertor...")
