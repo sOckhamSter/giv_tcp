@@ -60,7 +60,7 @@ def on_message(client, userdata, message):
         writecommand['chargeRate']=str(message.payload.decode("utf-8"))
         result=GivQueue.q.enqueue(wr.setChargeRate,writecommand)
     elif command=="reboot":
-        result=GivQueue.q.enqueue(wr.rebootinvertor)
+        result=GivQueue.q.enqueue(wr.rebootinverter)
     elif command=="setActivePowerRate":
         writecommand['activePowerRate']=str(message.payload.decode("utf-8"))
         result=GivQueue.q.enqueue(wr.setActivePowerRate,writecommand)
