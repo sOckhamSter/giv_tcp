@@ -237,6 +237,9 @@ def pubFromPickle():  # Publish last cached EVC Data
         multi_output['result'] = result
     return json.dumps(multi_output, indent=4, sort_keys=True, default=str)
 
+def start():
+    self_run2()
+
 def runAll(client):  # Read from EVC put in cache and publish
     # full_refresh=True
     result=getEVC(client)

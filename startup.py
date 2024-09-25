@@ -162,13 +162,13 @@ def createsettingsjson(inv):
 
 def findinv(networks):
     inverterStats={}
+    invList={}
+    evclist={}
     if len(networks)>0:
     # For each interface scan for inverters
         logger.debug("Networks available for scanning are: "+str(networks))
         inverterStats={}
-        invList={}
         list={}
-        evclist={}
         logger.info("Scanning network for GivEnergy Devices...")
         try:
             for subnet in networks:
@@ -311,12 +311,13 @@ if isAddon:
     hostDetails=result.json()
     i=0
     for interface in hostDetails['data']['interfaces']:
-        ip=str(interface['ipv4']['address']).split('/')[0][2:]
-        mask=str(interface['ipv4']['address']).split('/')[1][:-2]
-        if not ip == "":
+        if not interface['ipv4']['address'] == []:
+            logger.debug("ipv4 Interface= "+str(interface['ipv4']['address']))
+            ip=str(interface['ipv4']['address']).split('/')[0][2:]
+            mask=str(interface['ipv4']['address']).split('/')[1][:-2]
             hostIP=ip
-        networks[i]=interface['ipv4']['gateway']+"/"+str(mask)
-        logger.debug("Network Found: "+str(networks[i]))
+            networks[i]=interface['ipv4']['gateway']+"/"+str(mask)
+            logger.debug("Network Found: "+str(networks[i]))
         i=i+1
 else:
     # Get subnet from docker if not addon

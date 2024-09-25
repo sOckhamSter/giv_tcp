@@ -50,6 +50,9 @@ class HAMQTT():
 
     def publish_discovery2(array,SN):   #Recieve multiple payloads with Topics and publish in a single MQTT connection
         try:
+            inv_type=finditem(array,"Invertor_Type")
+            if inv_type=="":
+                inv_type="GivEnergy"
             rootTopic=str(GiV_Settings.MQTT_Topic+"/"+SN+"/")
             array['Stats/Timeout_Error']=0    # Set this always at start in case it doesn't exist
             publisher=[]
@@ -64,21 +67,21 @@ class HAMQTT():
                         #Determine Entitiy type (switch/sensor/number) and publish the right message
                         if entity_type.devType=="sensor":
                             if "Battery_Details" in topic:
-                                publisher.append(["homeassistant/sensor/GivEnergy/"+SN+"_"+str(topic).split("/")[-2]+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN)])
+                                publisher.append(["homeassistant/sensor/GivEnergy/"+SN+"_"+str(topic).split("/")[-2]+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN,inv_type)])
                             elif "Inverters" in topic:
-                                publisher.append(["homeassistant/sensor/GivEnergy/"+SN+"_"+str(topic).split("/")[-2]+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN)])
+                                publisher.append(["homeassistant/sensor/GivEnergy/"+SN+"_"+str(topic).split("/")[-2]+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN,inv_type)])
                             else:
-                                publisher.append(["homeassistant/sensor/GivEnergy/"+SN+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN)])
+                                publisher.append(["homeassistant/sensor/GivEnergy/"+SN+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN,inv_type)])
                         elif entity_type.devType=="switch":
-                            publisher.append(["homeassistant/switch/GivEnergy/"+SN+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN)])
+                            publisher.append(["homeassistant/switch/GivEnergy/"+SN+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN,inv_type)])
                         elif entity_type.devType=="number":
-                            publisher.append(["homeassistant/number/GivEnergy/"+SN+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN)])
+                            publisher.append(["homeassistant/number/GivEnergy/"+SN+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN,inv_type)])
                     #    elif entity_type[0]=="binary_sensor":
                     #        client.publish("homeassistant2/binary_sensor/GivEnergy/"+str(topic).split("/")[-1]+"/config",HAMQTT.create_binary_sensor_payload(topic,SN),retain=True)
                         elif entity_type.devType=="select":
-                            publisher.append(["homeassistant/select/GivEnergy/"+SN+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN)])
+                            publisher.append(["homeassistant/select/GivEnergy/"+SN+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN,inv_type)])
                         elif entity_type.devType=="button":
-                            publisher.append(["homeassistant/button/GivEnergy/"+SN+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN)])
+                            publisher.append(["homeassistant/button/GivEnergy/"+SN+"_"+str(topic).split("/")[-1]+"/config",HAMQTT.create_device_payload(topic,SN,inv_type)])
             
             # Loop round HA publishing 4 times in case its not all there
             i=0
@@ -131,7 +134,7 @@ class HAMQTT():
         unpub=CheckDisco.checkdisco(array)  #Check what is in broker vs what was sent and return missing items
         return unpub
 
-    def create_device_payload(topic,SN):
+    def create_device_payload(topic,SN,inv_type="EVC"):
         tempObj={}
         tempObj['stat_t']=str(topic).replace(" ","_")
         tempObj['avty_t'] = GiV_Settings.MQTT_Topic+"/"+SN+"/Stats/status"
@@ -173,6 +176,9 @@ class HAMQTT():
             tempObj["name"]=item.replace("_"," ") #Just final bit past the last "/"
             #tempObj["name"]=GiV_Settings.ha_device_prefix+" "+item.replace("_"," ") #Just final bit past the last "/"
         tempObj['device']['manufacturer']="GivEnergy"
+        if inv_type==None:
+            inv_type="EVC"
+        tempObj['device']['model']=inv_type
 
         entity_type= GivLUT.entity_type[item]
 
@@ -359,6 +365,7 @@ class CheckDisco():
     def removedisco(SN,messages):
         try:
             foundmessages=0
+            moremessages=0
             client = paho_mqtt.Client(paho_mqtt.CallbackAPIVersion.VERSION2,"GivEnergy_GivTCP_removedisco_"+str(GiV_Settings.givtcp_instance))
             client.on_connect = CheckDisco.on_connect
             client.on_message = CheckDisco.on_message
