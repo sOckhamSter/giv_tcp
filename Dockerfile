@@ -12,7 +12,7 @@ RUN apk add redis
 RUN apk add nginx
 
 RUN mkdir -p /run/nginx
-RUN npm install -g serve
+RUN npm install -g http-server
 
 # set the working directory in the container
 WORKDIR /app

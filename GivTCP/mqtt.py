@@ -743,7 +743,7 @@ def isfloat(num):
 
 def requestcommand(command,payload):
     requests=[]
-    logger.info("Requesting Control Action: "+str(command)+" - "+str(payload))
+    logger.debug("Requesting Control Action: "+str(command)+" - "+str(payload))
     if exists(GivLUT.writerequests):
         with open(GivLUT.writerequests,'rb') as inp:
             requests=pickle.load(inp)

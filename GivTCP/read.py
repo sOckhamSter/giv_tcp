@@ -116,7 +116,7 @@ async def watch_plant(
                         writecommands= pickle.load(inp)
                     for command in writecommands:
                         # call wr command and pass parameters
-                        logger.debug("Command: "+str(command[0])+" was sent: "+str(command[1]))
+                        logger.debug("Command: "+str(command[0])+" was recieved: "+str(command[1]))
                         if hasattr(write, command[0]):
                             func = getattr(write, command[0])
                             if inspect.iscoroutinefunction(func):
@@ -141,13 +141,30 @@ async def watch_plant(
                                 with GivLUT.restlock:
                                     with open(GivLUT.restresponse,'w') as outp:
                                         outp.write(json.dumps(responses))
-                            await asyncio.sleep(1)
-                    os.remove(GivLUT.writerequests)
+                            await asyncio.sleep(0.3)        #Pause between commands for 300ms
+
+                ## Check write file for anything more since opening and loop again
+                    with open(GivLUT.writerequests, 'rb') as inp:
+                        newwritecommands= pickle.load(inp)
+                    logger.debug("Write Commands lengths: "+str(len(writecommands))+" -> "+str(len(newwritecommands)))
+                    if len(newwritecommands)==len(writecommands):     #Only remove if no more commands recieved
+                        logger.debug("No new writes, removing writerequest file")
+                        os.remove(GivLUT.writerequests)
+                    else:
+                    #    #Loop straight back to proces smore write commands
+                        logger.debug("Looping back to mop up incoming write commands")
+                        ## remove old command before looping back
+                        for i in newwritecommands[:]:
+                            if i in writecommands:
+                                newwritecommands.remove(i)
+                        with open(GivLUT.writerequests,'wb') as outp:
+                            pickle.dump(newwritecommands, outp, pickle.HIGHEST_PROTOCOL)
+                        continue
 
                 timesincelast=datetime.datetime.now()-lastruntime
                 if timesincelast.total_seconds() < refresh_period:
-                    await asyncio.sleep(0.3)
-                    #if refresh period hasn't expired then just keep looping
+                    await asyncio.sleep(1)
+                    #if refresh period hasn't expired then just keep looping back up to write check
                     continue
                 
                 if not passive:

@@ -622,16 +622,17 @@ if setts['Web_Dash']==True:
     with open("app.json", 'w') as outp:
         outp.write("{\n")
         outp.write("  \"givTcpHosts\": [\n")
-
+        count=0
         for inv in runninginv:
             GUPORT = 6344 + inv
-            if inv > 1:
+            if count > 1:
                 outp.write("  ,{\n")
             else:
                 outp.write("  {\n")
             outp.write("    \"name\": \""+setts['inverterName_'+str(inv)]+"\",\n")
             outp.write("    \"port\": \""+str(GUPORT)+"\"\n")
             outp.write("  }\n")
+            count+=1
 
         outp.write("  ],\n")
         outp.write("  \"solarRate\": "+str(setts['day_rate'])+",\n")
@@ -639,7 +640,7 @@ if setts['Web_Dash']==True:
         outp.write("}")
     WDPORT=int(setts['Web_Dash_Port'])
     logger.info ("Serving Web Dashboard from port "+str(WDPORT))
-    command=shlex.split("/usr/bin/node /usr/local/bin/serve -p "+ str(WDPORT))
+    command=shlex.split("/usr/bin/node /usr/local/bin/http-server -s -p "+ str(WDPORT))
     webDash=subprocess.Popen(command)
 
 
@@ -659,7 +660,7 @@ while True:
                     timesince=(((timediff.seconds*1000000)+timediff.microseconds)/1000000)
                     logger.debug("timesince last read= "+str(timesince))
             else:
-                sleep(10)       #wait for first regcache then go back round loop
+                sleep(10)
                 continue
             PATH= "/app/GivTCP_"+str(inv)
             if setts['self_run']==True:
@@ -691,7 +692,7 @@ while True:
                 os.chdir("/app/WebDashboard")
                 WDPORT = int(setts['Web_Dash_Port'])
                 logger.info("Serving Web Dashboard from port " + str(WDPORT))
-                command = shlex.split("/usr/bin/node /usr/local/bin/serve -p " + str(WDPORT))
+                command = shlex.split("/usr/bin/node /usr/local/bin/http-server -s -p " + str(WDPORT))
                 webDash = subprocess.Popen(command)
 
         if setts['MQTT_Address']=="127.0.0.1":

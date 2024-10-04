@@ -5,6 +5,7 @@ from settings import GiV_Settings
 from givenergy_modbus.model import plant
 import logging
 import pickle
+import datetime
 from os.path import exists
 from os import remove
 from time import sleep
@@ -22,24 +23,6 @@ class GivClientAsync:
             logger.info("Opening Modbus Connection to "+str(GiV_Settings.invertorIP))
             await _client.connect()
         return _client
-
-class GivClient:
-    """Definition of GivEnergy client """
-    def getData(fullrefresh: bool):
-        
-        client= GivEnergyClient(host=GiV_Settings.invertorIP)
-        if GiV_Settings.isAIO:
-            numbat=0
-        else:
-            numbat=GiV_Settings.numBatteries
-        myplant=plant.Plant(number_batteries=numbat)
-        #If there is a serial_number use it
-        if hasattr(GiV_Settings,'serial_number'):
-            client.refresh_plant(myplant,GiV_Settings.isAIO,GiV_Settings.isAC,fullrefresh,serial_number=GiV_Settings.serial_number)
-        else:
-            client.refresh_plant(myplant,GiV_Settings.isAIO,GiV_Settings.isAC,fullrefresh)
-        return myplant
-
 
 
 class GivQueue:
@@ -138,6 +121,12 @@ class GivLUT:
             count=0
             if exists(GivLUT.cachelockfile):
                 logger.debug("regcache in use, waiting...")
+                with open(GivLUT.cachelockfile) as inp:
+                    file_age=datetime.datetime.strptime(inp.read(), '%Y-%m-%dT%H:%M:%S%z')
+                timesince=datetime.datetime.utcnow() - file_age
+                if timesince.total_seconds>10:
+                    logger.error("regCache Lockfile is too old, forcibly removing...")
+                    remove(GivLUT.cachelockfile)
                 while True:
                     count +=1
                     sleep(0.5)
@@ -149,7 +138,8 @@ class GivLUT:
                         logger.error("Timed out waiting for regcache")
                         remove(GivLUT.cachelockfile)
                         return None
-            open(GivLUT.cachelockfile, 'w').close() #create lock file
+            with open(GivLUT.cachelockfile, 'w') as inp: #create lock file
+                inp.write(datetime.datetime.utcnow().isoformat())
             if exists(GivLUT.regcache):
                 logger.debug("Opening regcache at: "+str(GivLUT.regcache))
                 with open(GivLUT.regcache, 'rb') as inp:
@@ -176,9 +166,11 @@ class GivLUT:
                 if not exists(GivLUT.cachelockfile):
                     break
                 if count==10:
+                    logger.error("Cannot save regCache: File Lock Timeout")
                     return
 ## Remove Raw from regCache??
-        open(GivLUT.cachelockfile, 'w').close() #create lock file
+        with open(GivLUT.cachelockfile, 'w') as inp: #create lock file
+            inp.write(datetime.datetime.utcnow().isoformat())
         with open(GivLUT.regcache, 'wb') as outp:
             pickle.dump(regCacheStack, outp, pickle.HIGHEST_PROTOCOL)
         remove(GivLUT.cachelockfile)
