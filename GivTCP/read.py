@@ -124,23 +124,24 @@ async def watch_plant(
                             else:
                                 result = func(command[1],True)
                             #send result to touchfile for REST response
-                            response={}
-                            responses=[]
-                            response['id']=command[0]
-                            response['result']=result
-                            if exists(GivLUT.restresponse):
+                            if command[2]==True:
+                                response={}
+                                responses=[]
+                                response['id']=command[0]
+                                response['result']=result
+                                if exists(GivLUT.restresponse):
+                                    with GivLUT.restlock:
+                                        with open(GivLUT.restresponse,'r') as inp:
+                                            responses=json.load(inp)
+                                    responses.append(response)
+                                    logger.debug("responses is: "+str(responses))
+                                else:
+                                    responses.append(response)
+                                    logger.debug("responses is: "+str(responses))
                                 with GivLUT.restlock:
-                                    with open(GivLUT.restresponse,'r') as inp:
-                                        responses=json.load(inp)
-                                logger.debug("responses is: "+str(responses))
-                                responses.append(response)
-                            else:
-                                responses.append(response)
-                                logger.debug("responses is: "+str(responses))
-                            with GivLUT.restlock:
-                                with open(GivLUT.restresponse,'w') as outp:
-                                    outp.write(json.dumps(responses))
-
+                                    with open(GivLUT.restresponse,'w') as outp:
+                                        outp.write(json.dumps(responses))
+                            await asyncio.sleep(1)
                     os.remove(GivLUT.writerequests)
 
                 timesincelast=datetime.datetime.now()-lastruntime
@@ -172,6 +173,7 @@ async def watch_plant(
                         for res in result:
                             if isinstance(res,TimeoutError):
                                 hasTimeout=True
+                                logger.error("Timeout Error: "+str(res))
                                 raise Exception(res)
                         timeoutErrors=0     # Reset timeouts if all is good this run
                         logger.debug("Data get was successful, now running handler if needed: ")
@@ -252,7 +254,7 @@ def getInvModel(plant: Plant):
         elif inverterModel.model == Model.ALL_IN_ONE:
             maxBatChargeRate=6000
         else:
-            maxBatChargeRate=2883
+            maxBatChargeRate=2600
     else:
         if inverterModel.model == Model.AC:
             maxBatChargeRate=5000
@@ -821,8 +823,8 @@ def processInverterInfo(plant: Plant):
             power_output['PV_Power'] = PV_power
         power_output['PV_Voltage_String_1'] = GEInv.v_pv1
         power_output['PV_Voltage_String_2'] = GEInv.v_pv2
-        power_output['PV_Current_String_1'] = GEInv.i_pv1*10
-        power_output['PV_Current_String_2'] = GEInv.i_pv2*10
+        power_output['PV_Current_String_1'] = GEInv.i_pv1
+        power_output['PV_Current_String_2'] = GEInv.i_pv2
         power_output['Grid_Voltage'] = GEInv.v_ac1
         power_output['Grid_Current'] = GEInv.i_grid_port 
 
@@ -1068,8 +1070,8 @@ def processInverterInfo(plant: Plant):
         multi_output["Control"] = controlmode
         multi_output["Battery_Details"] = batteries2
         multi_output["Meter_Details"] = meters
-    #    if GiV_Settings.Print_Raw_Registers:
-        multi_output['raw'] = getRaw(plant)
+        if GiV_Settings.Print_Raw_Registers:
+            multi_output['raw'] = getRaw(plant)
     except Exception:
         e = sys.exc_info() ,sys.exc_info()[2].tb_lineno
         #e=sys.exc_info()[0].__name__, os.path.basename(sys.exc_info()[2].tb_frame.f_code.co_filename), sys.exc_info()[2].tb_lineno
@@ -1214,8 +1216,8 @@ def processEMSInfo(plant: Plant):
         timeslots['Export_start_time_slot_3'] = GEInv.export_slot_3.start.isoformat()
         timeslots['Export_end_time_slot_3'] = GEInv.export_slot_3.end.isoformat()
 
-        #if GiV_Settings.Print_Raw_Registers:
-        multi_output['raw'] = getRaw(plant)
+        if GiV_Settings.Print_Raw_Registers:
+            multi_output['raw'] = getRaw(plant)
 
         multi_output['Power']=power_output
         multi_output['Power']['Meters']=meter
@@ -1390,8 +1392,8 @@ def processGatewayInfo(plant: Plant):
         meters={}
         meters.update(getMeters(plant))
 
-        #if GiV_Settings.Print_Raw_Registers:
-        multi_output['raw'] = getRaw(plant)
+        if GiV_Settings.Print_Raw_Registers:
+            multi_output['raw'] = getRaw(plant)
 
         energy["Today"] = energy_today_output
         energy["Total"] = energy_total_output
@@ -1440,8 +1442,8 @@ def processThreePhaseInfo(plant: Plant):
             inverter['Invertor_Time'] = GEInv.system_time.replace(tzinfo=GivLUT.timezone).isoformat()
         inv_time=datetime.datetime.strptime(inverter['Invertor_Time'], '%Y-%m-%dT%H:%M:%S%z')
 
-    #    if GiV_Settings.Print_Raw_Registers:
-        multi_output['raw'] = getRaw(plant)
+        if GiV_Settings.Print_Raw_Registers:
+            multi_output['raw'] = getRaw(plant)
 
         inverterModel=getInvModel(plant)
 
@@ -1636,7 +1638,7 @@ def processData(plant: Plant):
         givtcpdata['Last_Updated_Time'] = datetime.datetime.now(GivLUT.timezone).isoformat()
         givtcpdata['status'] = "online"
         givtcpdata['Time_Since_Last_Update'] = 0
-        givtcpdata['GivTCP_Version']= "3.0.1"
+        givtcpdata['GivTCP_Version']= "3.0.4"
         multi_output['Stats']=givtcpdata
         regCacheStack = GivLUT.get_regcache()
         if not regCacheStack:

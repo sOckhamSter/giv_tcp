@@ -63,16 +63,6 @@ class GivMQTT():
         except ValueError:
             return False
 
-    def requestcommand(command,payload):
-        requests=[]
-        logger.info("Requesting Control Action: "+str(command)+" - "+str(payload))
-        if exists(GivLUT.writerequests):
-            with open(GivLUT.writerequests,'rb') as inp:
-                requests=pickle.load(inp)
-        requests.append([command,payload])
-        with open(GivLUT.writerequests,'wb') as outp:
-            pickle.dump(requests, outp, pickle.HIGHEST_PROTOCOL)
-
     def on_disconnect(_client, userdata, flags, reason_code, properties):
         _client.connected_flag=False #set flag
         _client.loop_stop()
@@ -753,9 +743,10 @@ def isfloat(num):
 
 def requestcommand(command,payload):
     requests=[]
+    logger.info("Requesting Control Action: "+str(command)+" - "+str(payload))
     if exists(GivLUT.writerequests):
         with open(GivLUT.writerequests,'rb') as inp:
             requests=pickle.load(inp)
-    requests.append([command,payload])
+    requests.append([command,payload,False])
     with open(GivLUT.writerequests,'wb') as outp:
         pickle.dump(requests, outp, pickle.HIGHEST_PROTOCOL)

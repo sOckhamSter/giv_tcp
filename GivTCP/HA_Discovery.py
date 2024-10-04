@@ -417,5 +417,5 @@ class CheckDisco():
             client.disconnect()
         except:
             e=sys.exc_info()[0].__name__, sys.exc_info()[2].tb_lineno
-            logger.error("Error connecting to MQTT Broker: " + str(e))
+            logger.error("Error connecting to MQTT Broker: " + str(sys.exc_info()))
             client.disconnect()

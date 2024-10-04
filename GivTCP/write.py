@@ -25,7 +25,6 @@ from logging.handlers import TimedRotatingFileHandler
 from GivLUT import GivClientAsync
 
 logging.getLogger("givenergy_modbus_async").setLevel(logging.CRITICAL)
-client=GivEnergyClient(host=GiV_Settings.invertorIP)
 
  
 logging.basicConfig(format='%(asctime)s - Inv'+ str(GiV_Settings.givtcp_instance)+ \
@@ -107,7 +106,7 @@ async def sendAsyncCommand(reqs,readloop):
             break
     if not readloop:
         #if write command came from somewhere other than the read loop then close the connection at the end
-        logger.debug("Closing non readloop modbus connection")
+        logger.info("Closing non readloop modbus connection")
         await asyncclient.close()
     return output
 

@@ -1,5 +1,6 @@
 {
     "v3upgrade": true,
+    "auto_scan":true,
     "invertorIP_1": "",
     "inverter_enable_1": false,
     "Model_1": "",

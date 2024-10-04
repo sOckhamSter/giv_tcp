@@ -19,7 +19,7 @@ class GivClientAsync:
     async def get_connection():
         global _client
         if not _client.connected:
-            logger.debug("Opening Modbus Connection to "+str(GiV_Settings.invertorIP))
+            logger.info("Opening Modbus Connection to "+str(GiV_Settings.invertorIP))
             await _client.connect()
         return _client
 
@@ -147,6 +147,7 @@ class GivLUT:
                     if count==10:
                         # loop round for 5s waiting for it to become available
                         logger.error("Timed out waiting for regcache")
+                        remove(GivLUT.cachelockfile)
                         return None
             open(GivLUT.cachelockfile, 'w').close() #create lock file
             if exists(GivLUT.regcache):

@@ -158,7 +158,10 @@ def createsettingsjson(inv):
         outp.write("    serial_number_evc=\""+str(setts["serial_number_evc"])+"\"\n")
         outp.write("    evc_self_run_timer="+str(setts["evc_self_run_timer"])+"\n")
         outp.write("    evc_import_max_current="+str(setts["evc_import_max_current"])+"\n")
-        if SuperTimezone: outp.write("    timezone=\""+str(SuperTimezone)+"\"\n")
+        if SuperTimezone:
+            outp.write("    timezone=\""+str(SuperTimezone)+"\"\n")
+        else:
+            outp.write("    timezone=\""+str(setts["timezone"])+"\"\n")
 
 def findinv(networks):
     inverterStats={}
@@ -199,7 +202,7 @@ def findinv(networks):
                     count=0
                     while len(list)<=0:
                         if count<2:
-                            logger.debug("INV- Scanning network ("+str(count+1)+"):"+str(networks[subnet]))
+                            logger.info("INV- Scanning network ("+str(count+1)+"):"+str(networks[subnet]))
                             list=findInvertor(networks[subnet])
                             if len(list)>0: break
                             count=count+1
@@ -255,7 +258,7 @@ logger.addHandler(fh)
 logger.setLevel(logging.INFO)
 
 
-SuperTimezone={}        # 02-Aug-23  default it to None so that it is defined for saving in settngs.py for non-HA usage (otherwise exception)
+SuperTimezone={}
 logger.info("==================== STARTING GivTCP==========================")
 try:
     logger.debug("SUPERVISOR_TOKEN is: "+ os.getenv("SUPERVISOR_TOKEN"))
@@ -266,6 +269,30 @@ except:
     isAddon=False
     hasMQTT=False
     SuperTimezone=False
+
+PATH= "/app/GivTCP_"
+SFILE="/config/GivTCP/allsettings.json"
+v3upgrade=False      #Check if its a new upgrade or already has new json config file
+if not exists(SFILE):
+    v3upgrade=True
+    logger.debug("Copying in a template settings.json to: "+str(SFILE))
+    shutil.copyfile("settings.json",SFILE)
+else:
+    # If theres already a settings file, make sure its got any new elements
+    with open(SFILE, 'r') as f1:
+        setts=json.load(f1)
+    with open("/app/settings.json", 'r') as f2:
+        templatesetts=json.load(f2)
+    for setting in templatesetts:
+        if not setting in setts:
+            setts[setting]=templatesetts[setting]
+    with open(SFILE, 'w') as f:
+        f.write(json.dumps(setts,indent=4))
+
+# Update json object with found data
+logger.debug ("Creating master allsettings.json for all inverters.")
+with open(SFILE, 'r') as f:
+    setts=json.load(f)
 
 hostIP=""
 if isAddon:
@@ -317,7 +344,7 @@ if isAddon:
             mask=str(interface['ipv4']['address']).split('/')[1][:-2]
             hostIP=ip
             networks[i]=interface['ipv4']['gateway']+"/"+str(mask)
-            logger.debug("Network Found: "+str(networks[i]))
+            logger.info("Network Found: "+str(networks[i]))
         i=i+1
 else:
     # Get subnet from docker if not addon
@@ -346,19 +373,24 @@ with open('/app/ingress/hostip.json', 'w') as f:
 with open('/app/ingress/ingressurl.json', 'w') as f:
     f.write(json.dumps(baseurl,indent=4))
 
-finv={}
-i=0
-while len(finv)==0:
-    logger.info("Searching for Inverters")
-    finv=findinv(networks)
-    i=i+1
-    if i==3: 
-        break    
-inverterStats=finv[0]
-invList=finv[1]
-evcList=finv[2]
+if setts["auto_scan"]==True:
+    finv={}
+    i=0
+    while len(finv)==0:
+        logger.info("Searching for Inverters")
+        finv=findinv(networks)
+        i=i+1
+        if i==3: 
+            break    
+    inverterStats=finv[0]
+    invList=finv[1]
+    evcList=finv[2]
+else:
+    inverterStats={}
+    invList={}
+    evcList={}
 
-if len(invList)==0:
+if len(invList)==0 and setts["auto_scan"]==True:
     logger.error("=============================================================")
     logger.error("====               NO INVERTERS FOUND                    ====")
     logger.error("====      add manually using a file editor to modify     ====")
@@ -376,32 +408,13 @@ if not exists("/ssl/fullchain.pem"):
 subprocess.Popen(["nginx","-g","daemon off;"])
 logger.debug("Running nginx")
 
-
-PATH= "/app/GivTCP_"
-SFILE="/config/GivTCP/allsettings.json"
-v3upgrade=False      #Check if its a new upgrade or already has new json config file
-if not exists(SFILE):
-    v3upgrade=True
-    logger.debug("Copying in a template settings.json to: "+str(SFILE))
-    shutil.copyfile("settings.json",SFILE)
+if SuperTimezone: 
+    setts["timezone"]=str(SuperTimezone)
+elif "TZ" in os.environ:
+    setts["timezone"]=str(os.getenv("TZ"))
 else:
-    # If theres already a settings file, make sure its got any new elements
-    with open(SFILE, 'r') as f1:
-        setts=json.load(f1)
-    with open("/app/settings.json", 'r') as f2:
-        templatesetts=json.load(f2)
-    for setting in templatesetts:
-        if not setting in setts:
-            setts[setting]=templatesetts[setting]
-    with open(SFILE, 'w') as f:
-        f.write(json.dumps(setts,indent=4))
+    setts["timezone"]="Europe/London"
 
-
-# Update json object with found data
-logger.debug ("Creating master allsettings.json for all inverters.")
-with open(SFILE, 'r') as f:
-    setts=json.load(f)
-if SuperTimezone: setts["TZ"]=str(SuperTimezone)
 if hasMQTT:
     logger.debug("Using found MQTT data to autosetup settings.json")
     setts["MQTT_Output"]=True
@@ -439,7 +452,7 @@ for inv in inverterStats:
         
 
 if len(evcList)>0:
-    logger.debug("evcList: "+str(evcList))
+    logger.info("evcList: "+str(evcList))
     if setts["evc_ip_address"]=="":
         setts["evc_ip_address"]=evcList[1][0]
     if setts["serial_number_evc"]=="":
@@ -487,14 +500,18 @@ if exists("/config/GivTCP/v2env.pkl") and v3upgrade:
     setts["influxBucket"]=envs[0]["INFLUX_BUCKET"]
     setts["influxOrg"]=envs[0]["INFLUX_ORG"]
     setts["self_run"]=True
-    setts['evc_enable']=bool(envs[0]["EVC_ENABLE"])
     setts['evc_self_run_timer']=envs[0]["EVC_SELF_RUN_TIMER"]
+    if setts['evc_ip_address']=="" and not envs[0]["EVC_IP_ADDRESS"]=="":
+        setts['evc_ip_address']=envs[0]["EVC_IP_ADDRESS"]
+    if setts['evc_ip_address']=="":
+        setts['evc_enable']=False
 
     ## Match HAPREFIX to inverterIP
     for num in range(1,6):
         for inv in range(0, len(v2invertersettings)):
-            if setts["invertorIP_"+str(num)]==v2invertersettings[inv]['IP_Address']:
-                setts["inverterName_"+str(num)]=v2invertersettings[inv]["Prefix"]
+            if "IP_Address" in v2invertersettings[inv]:
+                if setts["invertorIP_"+str(num)]==v2invertersettings[inv]['IP_Address']:
+                    setts["inverterName_"+str(num)]=v2invertersettings[inv]["Prefix"]
 
 
 with open(SFILE, 'w') as f:
@@ -548,10 +565,7 @@ for inv in range(1,6):
             if not filename.__contains__("log") and not filename.startswith("rateData") and not filename.startswith(".dayRate") and not filename.startswith(".nightRate") and not filename.startswith("allsettings") and not filename.startswith("v2env") and not filename.startswith(".v3upgrade"):
                 os.remove(setts['cache_location']+"/"+file)
         if exists(setts["cache_location"]+"/rateData_"+str(inv)+".pkl"):
-            if "TZ" in os.environ:
-                timezone=zoneinfo.ZoneInfo(key=setts["TZ"])
-            else:
-                timezone=zoneinfo.ZoneInfo(key="Europe/London")
+            timezone=zoneinfo.ZoneInfo(key=setts["timezone"])
             modDay= datetime.fromtimestamp(os.path.getmtime(setts["cache_location"]+"/rateData_"+str(inv)+".pkl")).date()
             if modDay<datetime.now(timezone).date():
                 logger.debug("Old rate data cache not updated today, so deleting")
@@ -638,7 +652,6 @@ if setts['Smart_Target']==True:
 while True:
     try:
         for inv in runninginv:
-            #regCacheStack=get_regcache(setts['cache_location']+"/regCache_"+str(inv)+".pkl",inv)
             if exists(setts['cache_location']+"/lastUpdate_"+str(inv)+".pkl"):
                 with open(setts['cache_location']+"/lastUpdate_"+str(inv)+".pkl", 'rb') as inp:
                     previousUpdate = pickle.load(inp)

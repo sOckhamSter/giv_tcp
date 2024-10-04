@@ -29,7 +29,7 @@ def requestcommand(command,payload):
         if exists(GivLUT.writerequests):
             with open(GivLUT.writerequests,'rb') as inp:
                 requests=pickle.load(inp)
-        requests.append([command,payload])
+        requests.append([command,payload,True])
         with open(GivLUT.writerequests,'wb') as outp:
             pickle.dump(requests, outp, pickle.HIGHEST_PROTOCOL)
     except:
