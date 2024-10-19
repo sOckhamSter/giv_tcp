@@ -7,7 +7,6 @@ import datetime
 from datetime import datetime, timedelta
 from settings import GiV_Settings
 import settings
-import signal
 import time
 from os.path import exists
 import pickle,os
@@ -15,7 +14,6 @@ import GivLUT
 from GivLUT import GivLUT, GivQueue
 from givenergy_modbus_async.client import commands
 from givenergy_modbus_async.model import TimeSlot
-from givenergy_modbus.client import GivEnergyClient
 from givenergy_modbus_async.pdu import WriteHoldingRegisterResponse, TransparentRequest
 import requests
 import importlib

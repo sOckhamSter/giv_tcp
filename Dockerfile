@@ -35,7 +35,7 @@ RUN rm /etc/nginx/http.d/default.conf
 COPY GivTCP/ ./GivTCP
 COPY WebDashboard ./WebDashboard
 # COPY givenergy_modbus/ /usr/local/lib/python3.11/site-packages/givenergy_modbus
-COPY GivTCP/givenergy_modbus_async/ /usr/local/lib/python3.12/site-packages/givenergy_modbus_async
+# COPY GivTCP/givenergy_modbus_async/ /usr/local/lib/python3.12/site-packages/givenergy_modbus_async
 
 COPY api.json ./GivTCP/api.json
 COPY startup.py startup.py

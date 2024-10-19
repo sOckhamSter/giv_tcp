@@ -6,7 +6,6 @@ from flask import Flask, request, render_template, Response, send_file
 from flask_cors import CORS
 import read as rd       #grab passthrough functions from main read file
 import write as wr      #grab passthrough functions from main write file
-import evc as evc
 import pickle
 from GivLUT import GivLUT
 import os
@@ -21,6 +20,10 @@ logger = GivLUT.logger
 giv_api = Flask(__name__)
 CORS(giv_api)
 
+with open("/config/GivTCP/allsettings.json", "r") as inp:
+    setts=json.load(inp)
+if setts["evc_enable"]==True:
+    import evc
 #Proxy Read Functions
 
 def requestcommand(command,payload):

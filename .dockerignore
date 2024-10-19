@@ -1,4 +1,5 @@
 GivTCP/settings.py
+GivTCP/evc_settings.py
 GivTCP/testdata.json
 GivTCP/startup.sh
 .lockfile

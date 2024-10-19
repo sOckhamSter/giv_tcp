@@ -163,6 +163,46 @@ def createsettingsjson(inv):
         else:
             outp.write("    timezone=\""+str(setts["timezone"])+"\"\n")
 
+def createevcsettingsjson(inv):
+    PATH= "/app/GivTCP"
+    SFILE="/config/GivTCP/allsettings.json"
+    logger.debug("Recreating settings.py for EVC ")
+    with open(SFILE, 'r') as f1:
+        setts=json.load(f1)
+
+    with open(PATH+"/settings.py", 'w') as outp:
+        outp.write("class GiV_Settings:\n")
+        outp.write("    MQTT_Address=\""+str(setts["MQTT_Address"])+"\"\n")
+        outp.write("    MQTT_Username=\""+str(setts["MQTT_Username"])+"\"\n")
+        outp.write("    MQTT_Password=\""+str(setts["MQTT_Password"])+"\"\n")
+        outp.write("    MQTT_Port="+str(setts["MQTT_Port"])+"\n")
+        outp.write("    MQTT_Retain="+str(setts["MQTT_Retain"]).capitalize()+"\n")
+        outp.write("    MQTT_Topic=\""+str(setts["MQTT_Topic"])+"\"\n")
+        if isAddon:
+            outp.write("    HA_Auto_D=True\n")
+            outp.write("    MQTT_Output=True\n")
+            outp.write("    isAddon=True\n")
+        else:
+            outp.write("    HA_Auto_D="+str(setts["HA_Auto_D"]).capitalize()+"\n")
+            outp.write("    MQTT_Output="+str(setts["MQTT_Output"]).capitalize()+"\n")
+            outp.write("    isAddon=False\n")
+        outp.write("    ha_device_prefix=\"GivEVC\"\n")
+        outp.write("    Log_Level=\""+str(setts["Log_Level"])+"\"\n")
+        outp.write("    first_run_evc= True\n")
+        outp.write("    givtcp_instance="+str(inv)+"\n")
+        outp.write("    cache_location=\"/config/GivTCP\"\n")
+        outp.write("    Debug_File_Location=\"/config/GivTCP/log_evc.log\"\n")
+        outp.write("    Debug_File_Location_Write=\"/config/GivTCP/write_log_evc.log\"\n")
+        outp.write("    evc_enable="+str(setts["evc_enable"]).capitalize()+"\n")
+        outp.write("    evc_ip_address=\""+str(setts["evc_ip_address"])+"\"\n")
+        outp.write("    serial_number_evc=\""+str(setts["serial_number_evc"])+"\"\n")
+        outp.write("    evc_self_run_timer="+str(setts["evc_self_run_timer"])+"\n")
+        outp.write("    evc_import_max_current="+str(setts["evc_import_max_current"])+"\n")
+        if SuperTimezone:
+            outp.write("    timezone=\""+str(SuperTimezone)+"\"\n")
+        else:
+            outp.write("    timezone=\""+str(setts["timezone"])+"\"\n")
+
 def findinv(networks):
     inverterStats={}
     invList={}
@@ -247,7 +287,7 @@ def findinv(networks):
 os.makedirs(os.path.dirname("/config/GivTCP/"),exist_ok=True)
 
 from logging.handlers import TimedRotatingFileHandler
-logging.basicConfig(format='%(asctime)s - Startup'+ \
+logging.basicConfig(format='%(asctime)s'+ \
                     ' - %(module)-11s -  [%(levelname)-8s] - %(message)s')
 formatter = logging.Formatter(
     '%(asctime)s - %(module)s - [%(levelname)s] - %(message)s')
@@ -529,6 +569,29 @@ if not exists(str(setts["cache_location"])):
 else:
     logger.debug("Config directory already exists")
 
+os.chdir("/app/GivTCP")
+logger.debug ("Starting Settings Gunicorn on port 6350")
+command=shlex.split("/usr/local/bin/gunicorn -w 1 -b :6350 settings_rest:giv_api")
+setting_rest=subprocess.Popen(command)
+
+
+## Run EVC first
+if setts['evc_enable']==True:
+    ## Create settingsfile for EVC
+    foundinv=0
+    for inv in range(1,6):
+        if setts['inverter_enable_'+str(inv)]==True:
+            foundinv=inv
+            break   #Stop on the first enabled inverter and pass it to evc settings
+    if not setts['evc_ip_address']=="":
+        createevcsettingsjson(foundinv)
+        logger.info ("Running EVC read loop every "+str(setts['evc_self_run_timer'])+"s")
+        evcSelfRun=subprocess.Popen(["/usr/local/bin/python3","/app/GivTCP/evc.py", "self_run2"])
+        evcChargeModeLoop=subprocess.Popen(["/usr/local/bin/python3","/app/GivTCP/evc.py", "chargeMode"])
+        logger.debug ("Setting chargeMode loop to manage different charge modes every 60s")
+    else:
+        logger.info("EVC IP is missing from config. Please update and restart GivTCP")
+
 runninginv=[]
 
 # Change this to only use those inverters set to enabled in settings (INDENT)
@@ -605,15 +668,6 @@ for inv in range(1,6):
         command=shlex.split("/usr/local/bin/gunicorn -w 3 -b :"+str(GUPORT)+" REST:giv_api")
         gunicorn[inv]=subprocess.Popen(command)
 
-if setts['evc_enable']==True:
-    if not setts['evc_ip_address']=="":
-        logger.info ("Running EVC read loop every "+str(setts['evc_self_run_timer'])+"s")
-        evcSelfRun=subprocess.Popen(["/usr/local/bin/python3",PATH+"/evc.py", "self_run2"])
-        evcChargeModeLoop=subprocess.Popen(["/usr/local/bin/python3",PATH+"/evc.py", "chargeMode"])
-        logger.debug ("Setting chargeMode loop to manage different charge modes every 60s")
-    else:
-        logger.info("EVC IP is missing from config. Please update and restart GivTCP")
-
 
 if setts['Web_Dash']==True:
     # Create app.json
@@ -670,7 +724,7 @@ while True:
                     os.chdir(PATH)
                     logger.info ("Restarting Invertor read loop every "+str(setts['self_run_timer'])+"s")
                     selfRun[inv]=subprocess.Popen(["/usr/local/bin/python3",PATH+"/read.py", "start"])
-                elif timesince>(float(setts['self_run_timer'])*5):
+                elif timesince>(float(setts['self_run_timer'])*10):
                     logger.error("Self Run loop process stuck. Killing and restarting...")
                     os.chdir(PATH)
                     selfRun[inv].kill()
@@ -709,13 +763,13 @@ while True:
                 logger.error("EVC Self Run loop process died. restarting...")
                 os.chdir(PATH)
                 logger.info ("Restarting EVC read loop every "+str(setts['evc_self_run_timer'])+"s")
-                selfRun[inv]=subprocess.Popen(["/usr/local/bin/python3",PATH+"/evc.py", "self_run2"])
+                selfRun[inv]=subprocess.Popen(["/usr/local/bin/python3","/app/GivTCP/evc.py", "self_run2"])
             if not evcChargeModeLoop.poll()==None:
                 evcChargeModeLoop.kill()
                 logger.error("EVC Self Run loop process died. restarting...")
                 os.chdir(PATH)
                 logger.info ("Restarting EVC chargeMode loop every 60s")
-                evcChargeModeLoop=subprocess.Popen(["/usr/local/bin/python3",PATH+"/evc.py", "chargeMode"])
+                evcChargeModeLoop=subprocess.Popen(["/usr/local/bin/python3","/app/GivTCP/evc.py", "chargeMode"])
 
         ## Could we run a periodic Time Sync check? Maybe a config item??
     except:

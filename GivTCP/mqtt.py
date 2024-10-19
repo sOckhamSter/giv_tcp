@@ -3,13 +3,18 @@ import paho.mqtt.client as mqtt
 import time
 from os.path import exists, basename
 import pickle
+import json
 import write as wr
-import evc as evc
 from GivLUT import GivLUT
 from settings import GiV_Settings
 import sys
 
 logger = GivLUT.logger
+
+with open("/config/GivTCP/allsettings.json", "r") as inp:
+    setts=json.load(inp)
+if setts["evc_enable"]==True:
+    import evc
 
 #connected_flag=False     
 _mqttclient=mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, "GivEnergy_GivTCP_"+str(GiV_Settings.givtcp_instance))
