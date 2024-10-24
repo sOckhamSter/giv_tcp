@@ -359,7 +359,7 @@ class CheckDisco():
             logger.error("Error in to MQTT Address. Check config and update.")
             client.disconnect()
         except:
-            e=sys.exc_info()[0].__name__, sys.exc_info()[2].tb_lineno
+            e=sys.exc_info()[0].__name__, os.path.basename(sys.exc_info()[2].tb_frame.f_code.co_filename), sys.exc_info()[2].tb_lineno
             logger.error("Error connecting to MQTT Broker: " + str(e))
             client.disconnect()
     
@@ -417,6 +417,6 @@ class CheckDisco():
             logger.error("Error in to MQTT Address. Check config and update.")
             client.disconnect()
         except:
-            e=sys.exc_info()[0].__name__, sys.exc_info()[2].tb_lineno
-            logger.error("Error connecting to MQTT Broker: " + str(sys.exc_info()))
+            e=sys.exc_info()[0].__name__, os.path.basename(sys.exc_info()[2].tb_frame.f_code.co_filename), sys.exc_info()[2].tb_lineno
+            logger.error("Error connecting to MQTT Broker: " + str(e))
             client.disconnect()

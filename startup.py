@@ -21,7 +21,6 @@ redis={}
 networks={}
 SuperTimezone=""
 
-logging.getLogger("givenergy_modbus_async").setLevel(logging.CRITICAL)
 
 # Check if config directory exists and creates it if not
 
@@ -99,6 +98,7 @@ def createsettingsjson(inv):
         outp.write("    invertorIP=\""+str(setts["invertorIP_"+str(inv)])+"\"\n")
         outp.write("    serial_number=\""+str(setts["serial_number_"+str(inv)])+"\"\n")
         outp.write("    inverter_type=\""+str(setts["Model_"+str(inv)])+"\"\n")
+        outp.write("    Battery_Only=\""+str(setts["inverter_battery_only_"+str(inv)])+"\"\n")
         outp.write("    MQTT_Address=\""+str(setts["MQTT_Address"])+"\"\n")
         outp.write("    MQTT_Username=\""+str(setts["MQTT_Username"])+"\"\n")
         outp.write("    MQTT_Password=\""+str(setts["MQTT_Password"])+"\"\n")
@@ -125,7 +125,7 @@ def createsettingsjson(inv):
         outp.write("    first_run_evc= True\n")
         outp.write("    self_run_timer="+str(setts["self_run_timer"])+"\n")
         outp.write("    self_run_timer_full="+str(setts["self_run_timer_full"])+"\n")
-        outp.write("    queue_retries="+str(setts["queue_retries"])+"\n")
+        outp.write("    queue_retries="+str(setts["queue_retries"])+"\n")    
         outp.write("    givtcp_instance="+str(inv)+"\n")
         outp.write("    default_path=\""+str(PATH)+"\"\n")
         outp.write("    dynamic_tariff="+str(setts["dynamic_tariff"]).capitalize()+"\n")
@@ -136,8 +136,8 @@ def createsettingsjson(inv):
         outp.write("    night_rate_start=\""+str(setts["night_rate_start"])+"\"\n")
         outp.write("    data_smoother=\""+str(setts["data_smoother"])+"\"\n")
         outp.write("    cache_location=\"/config/GivTCP\"\n")
-        outp.write("    Debug_File_Location=\"/config/GivTCP/log_inv_"+str(inv)+".log\"\n")
-        outp.write("    Debug_File_Location_Write=\"/config/GivTCP/write_log_inv_"+str(inv)+".log\"\n")
+        outp.write("    Debug_File_Location=\"/config/GivTCP/logs/log_inv_"+str(inv)+".log\"\n")
+        outp.write("    Debug_File_Location_Write=\"/config/GivTCP/logs/write_log_inv_"+str(inv)+".log\"\n")
         outp.write("    inverter_num=\""+str(inv)+"\"\n")
         outp.write("    Smart_Target="+str(setts["dynamic_tariff"]).capitalize()+"\n")
         outp.write("    GE_API=\""+str(setts["GE_API"])+"\"\n")
@@ -158,7 +158,50 @@ def createsettingsjson(inv):
         outp.write("    serial_number_evc=\""+str(setts["serial_number_evc"])+"\"\n")
         outp.write("    evc_self_run_timer="+str(setts["evc_self_run_timer"])+"\n")
         outp.write("    evc_import_max_current="+str(setts["evc_import_max_current"])+"\n")
-        if SuperTimezone: outp.write("    timezone=\""+str(SuperTimezone)+"\"\n")
+        if SuperTimezone:
+            outp.write("    timezone=\""+str(SuperTimezone)+"\"\n")
+        else:
+            outp.write("    timezone=\""+str(setts["timezone"])+"\"\n")
+
+def createevcsettingsjson(inv):
+    PATH= "/app/GivTCP"
+    SFILE="/config/GivTCP/allsettings.json"
+    logger.debug("Recreating settings.py for EVC ")
+    with open(SFILE, 'r') as f1:
+        setts=json.load(f1)
+
+    with open(PATH+"/settings.py", 'w') as outp:
+        outp.write("class GiV_Settings:\n")
+        outp.write("    MQTT_Address=\""+str(setts["MQTT_Address"])+"\"\n")
+        outp.write("    MQTT_Username=\""+str(setts["MQTT_Username"])+"\"\n")
+        outp.write("    MQTT_Password=\""+str(setts["MQTT_Password"])+"\"\n")
+        outp.write("    MQTT_Port="+str(setts["MQTT_Port"])+"\n")
+        outp.write("    MQTT_Retain="+str(setts["MQTT_Retain"]).capitalize()+"\n")
+        outp.write("    MQTT_Topic=\""+str(setts["MQTT_Topic"])+"\"\n")
+        if isAddon:
+            outp.write("    HA_Auto_D=True\n")
+            outp.write("    MQTT_Output=True\n")
+            outp.write("    isAddon=True\n")
+        else:
+            outp.write("    HA_Auto_D="+str(setts["HA_Auto_D"]).capitalize()+"\n")
+            outp.write("    MQTT_Output="+str(setts["MQTT_Output"]).capitalize()+"\n")
+            outp.write("    isAddon=False\n")
+        outp.write("    ha_device_prefix=\"GivEVC\"\n")
+        outp.write("    Log_Level=\""+str(setts["Log_Level"])+"\"\n")
+        outp.write("    first_run_evc= True\n")
+        outp.write("    givtcp_instance="+str(inv)+"\n")
+        outp.write("    cache_location=\"/config/GivTCP\"\n")
+        outp.write("    Debug_File_Location=\"/config/GivTCP/logs/log_evc.log\"\n")
+        outp.write("    Debug_File_Location_Write=\"/config/GivTCP/logs/write_log_evc.log\"\n")
+        outp.write("    evc_enable="+str(setts["evc_enable"]).capitalize()+"\n")
+        outp.write("    evc_ip_address=\""+str(setts["evc_ip_address"])+"\"\n")
+        outp.write("    serial_number_evc=\""+str(setts["serial_number_evc"])+"\"\n")
+        outp.write("    evc_self_run_timer="+str(setts["evc_self_run_timer"])+"\n")
+        outp.write("    evc_import_max_current="+str(setts["evc_import_max_current"])+"\n")
+        if SuperTimezone:
+            outp.write("    timezone=\""+str(SuperTimezone)+"\"\n")
+        else:
+            outp.write("    timezone=\""+str(setts["timezone"])+"\"\n")
 
 def findinv(networks):
     inverterStats={}
@@ -199,7 +242,7 @@ def findinv(networks):
                     count=0
                     while len(list)<=0:
                         if count<2:
-                            logger.debug("INV- Scanning network ("+str(count+1)+"):"+str(networks[subnet]))
+                            logger.info("INV- Scanning network ("+str(count+1)+"):"+str(networks[subnet]))
                             list=findInvertor(networks[subnet])
                             if len(list)>0: break
                             count=count+1
@@ -241,21 +284,24 @@ def findinv(networks):
 ###############################
 
 # Create GivTCP config folder in case it doesn't exist
-os.makedirs(os.path.dirname("/config/GivTCP/"),exist_ok=True)
+#os.makedirs(os.path.dirname("/config/GivTCP/"),exist_ok=True)
+os.makedirs(os.path.dirname("/config/GivTCP/logs/"),exist_ok=True)
 
 from logging.handlers import TimedRotatingFileHandler
-logging.basicConfig(format='%(asctime)s - Startup'+ \
+logging.basicConfig(format='%(asctime)s'+ \
                     ' - %(module)-11s -  [%(levelname)-8s] - %(message)s')
 formatter = logging.Formatter(
     '%(asctime)s - %(module)s - [%(levelname)s] - %(message)s')
-fh = TimedRotatingFileHandler("/config/GivTCP/startup.log", when='midnight', backupCount=7)
+fh = TimedRotatingFileHandler("/config/GivTCP/logs/startup.log", when='midnight', backupCount=7)
 fh.setFormatter(formatter)
 logger = logging.getLogger()
 logger.addHandler(fh)
 logger.setLevel(logging.INFO)
 
+logging.getLogger("givenergy_modbus_async").setLevel(logging.CRITICAL)
 
-SuperTimezone={}        # 02-Aug-23  default it to None so that it is defined for saving in settngs.py for non-HA usage (otherwise exception)
+
+SuperTimezone={}
 logger.info("==================== STARTING GivTCP==========================")
 try:
     logger.debug("SUPERVISOR_TOKEN is: "+ os.getenv("SUPERVISOR_TOKEN"))
@@ -266,6 +312,30 @@ except:
     isAddon=False
     hasMQTT=False
     SuperTimezone=False
+
+PATH= "/app/GivTCP_"
+SFILE="/config/GivTCP/allsettings.json"
+v3upgrade=False      #Check if its a new upgrade or already has new json config file
+if not exists(SFILE):
+    v3upgrade=True
+    logger.debug("Copying in a template settings.json to: "+str(SFILE))
+    shutil.copyfile("settings.json",SFILE)
+else:
+    # If theres already a settings file, make sure its got any new elements
+    with open(SFILE, 'r') as f1:
+        setts=json.load(f1)
+    with open("/app/settings.json", 'r') as f2:
+        templatesetts=json.load(f2)
+    for setting in templatesetts:
+        if not setting in setts:
+            setts[setting]=templatesetts[setting]
+    with open(SFILE, 'w') as f:
+        f.write(json.dumps(setts,indent=4))
+
+# Update json object with found data
+logger.debug ("Creating master allsettings.json for all inverters.")
+with open(SFILE, 'r') as f:
+    setts=json.load(f)
 
 hostIP=""
 if isAddon:
@@ -286,7 +356,7 @@ if isAddon:
         hasMQTT=False
         logger.info("No HA MQTT service has been found. Install and run the Mosquitto addon, or manually configure your own MQTT broker.")
 
-    #Get Timezone
+    #Get Timezone    
     url="http://supervisor/info"
     result = requests.get(url,
         headers={'Content-Type':'application/json',
@@ -294,8 +364,8 @@ if isAddon:
     info=result.json()
     SuperTimezone=info['data']['timezone']
     logger.debug("Supervisor Timezone: "+str(SuperTimezone))
-
-    #Get addonslug/ingress url
+    
+    #Get addonslug/ingress url    
     url="http://supervisor/addons/self/info"
     result = requests.get(url,
         headers={'Content-Type':'application/json',
@@ -303,7 +373,7 @@ if isAddon:
     baseurl=result.json()['data']['ingress_url']
     logger.debug("Ingress URL is: "+str(baseurl))
 
-    #Get Host Details
+    #Get Host Details    
     url="http://supervisor/network/info"
     result = requests.get(url,
         headers={'Content-Type':'application/json',
@@ -317,7 +387,7 @@ if isAddon:
             mask=str(interface['ipv4']['address']).split('/')[1][:-2]
             hostIP=ip
             networks[i]=interface['ipv4']['gateway']+"/"+str(mask)
-            logger.debug("Network Found: "+str(networks[i]))
+            logger.info("Network Found: "+str(networks[i]))
         i=i+1
 else:
     # Get subnet from docker if not addon
@@ -346,19 +416,24 @@ with open('/app/ingress/hostip.json', 'w') as f:
 with open('/app/ingress/ingressurl.json', 'w') as f:
     f.write(json.dumps(baseurl,indent=4))
 
-finv={}
-i=0
-while len(finv)==0:
-    logger.info("Searching for Inverters")
-    finv=findinv(networks)
-    i=i+1
-    if i==3:
-        break
-inverterStats=finv[0]
-invList=finv[1]
-evcList=finv[2]
+if setts["auto_scan"]==True:
+    finv={}
+    i=0
+    while len(finv)==0:
+        logger.info("Searching for Inverters")
+        finv=findinv(networks)
+        i=i+1
+        if i==3: 
+            break    
+    inverterStats=finv[0]
+    invList=finv[1]
+    evcList=finv[2]
+else:
+    inverterStats={}
+    invList={}
+    evcList={}
 
-if len(invList)==0:
+if len(invList)==0 and setts["auto_scan"]==True:
     logger.error("=============================================================")
     logger.error("====               NO INVERTERS FOUND                    ====")
     logger.error("====      add manually using a file editor to modify     ====")
@@ -376,32 +451,13 @@ if not exists("/ssl/fullchain.pem"):
 subprocess.Popen(["nginx","-g","daemon off;"])
 logger.debug("Running nginx")
 
-
-PATH= "/app/GivTCP_"
-SFILE="/config/GivTCP/allsettings.json"
-v3upgrade=False      #Check if its a new upgrade or already has new json config file
-if not exists(SFILE):
-    v3upgrade=True
-    logger.debug("Copying in a template settings.json to: "+str(SFILE))
-    shutil.copyfile("settings.json",SFILE)
+if SuperTimezone: 
+    setts["timezone"]=str(SuperTimezone)
+elif "TZ" in os.environ:
+    setts["timezone"]=str(os.getenv("TZ"))
 else:
-    # If theres already a settings file, make sure its got any new elements
-    with open(SFILE, 'r') as f1:
-        setts=json.load(f1)
-    with open("/app/settings.json", 'r') as f2:
-        templatesetts=json.load(f2)
-    for setting in templatesetts:
-        if not setting in setts:
-            setts[setting]=templatesetts[setting]
-    with open(SFILE, 'w') as f:
-        f.write(json.dumps(setts,indent=4))
+    setts["timezone"]="Europe/London"
 
-
-# Update json object with found data
-logger.debug ("Creating master allsettings.json for all inverters.")
-with open(SFILE, 'r') as f:
-    setts=json.load(f)
-if SuperTimezone: setts["TZ"]=str(SuperTimezone)
 if hasMQTT:
     logger.debug("Using found MQTT data to autosetup settings.json")
     setts["MQTT_Output"]=True
@@ -436,10 +492,10 @@ for inv in inverterStats:
                     setts["invertorIP_"+str(num)]=inverterStats[inv]['IP_Address']
                 break
     setts['Model_'+str(inv)]=inverterStats[inv]['Model'].name.capitalize()
-
+        
 
 if len(evcList)>0:
-    logger.debug("evcList: "+str(evcList))
+    logger.info("evcList: "+str(evcList))
     if setts["evc_ip_address"]=="":
         setts["evc_ip_address"]=evcList[1][0]
     if setts["serial_number_evc"]=="":
@@ -487,14 +543,18 @@ if exists("/config/GivTCP/v2env.pkl") and v3upgrade:
     setts["influxBucket"]=envs[0]["INFLUX_BUCKET"]
     setts["influxOrg"]=envs[0]["INFLUX_ORG"]
     setts["self_run"]=True
-    setts['evc_enable']=bool(envs[0]["EVC_ENABLE"])
     setts['evc_self_run_timer']=envs[0]["EVC_SELF_RUN_TIMER"]
+    if setts['evc_ip_address']=="" and not envs[0]["EVC_IP_ADDRESS"]=="":
+        setts['evc_ip_address']=envs[0]["EVC_IP_ADDRESS"]
+    if setts['evc_ip_address']=="":
+        setts['evc_enable']=False
 
     ## Match HAPREFIX to inverterIP
     for num in range(1,6):
         for inv in range(0, len(v2invertersettings)):
-            if setts["invertorIP_"+str(num)]==v2invertersettings[inv]['IP_Address']:
-                setts["inverterName_"+str(num)]=v2invertersettings[inv]["Prefix"]
+            if "IP_Address" in v2invertersettings[inv]:
+                if setts["invertorIP_"+str(num)]==v2invertersettings[inv]['IP_Address']:
+                    setts["inverterName_"+str(num)]=v2invertersettings[inv]["Prefix"]
 
 
 with open(SFILE, 'w') as f:
@@ -511,6 +571,29 @@ if not exists(str(setts["cache_location"])):
     logger.debug("No config directory exists, so creating it...")
 else:
     logger.debug("Config directory already exists")
+
+os.chdir("/app/GivTCP")
+logger.debug ("Starting Settings Gunicorn on port 6350")
+command=shlex.split("/usr/local/bin/gunicorn -w 1 -b :6350 settings_rest:giv_api")
+setting_rest=subprocess.Popen(command)
+
+
+## Run EVC first
+if setts['evc_enable']==True:
+    ## Create settingsfile for EVC
+    foundinv=0
+    for inv in range(1,6):
+        if setts['inverter_enable_'+str(inv)]==True:
+            foundinv=inv
+            break   #Stop on the first enabled inverter and pass it to evc settings
+    if not setts['evc_ip_address']=="":
+        createevcsettingsjson(foundinv)
+        logger.info ("Running EVC read loop every "+str(setts['evc_self_run_timer'])+"s")
+        evcSelfRun=subprocess.Popen(["/usr/local/bin/python3","/app/GivTCP/evc.py", "self_run2"])
+        evcChargeModeLoop=subprocess.Popen(["/usr/local/bin/python3","/app/GivTCP/evc.py", "chargeMode"])
+        logger.debug ("Setting chargeMode loop to manage different charge modes every 60s")
+    else:
+        logger.info("EVC IP is missing from config. Please update and restart GivTCP")
 
 runninginv=[]
 
@@ -540,7 +623,7 @@ for inv in range(1,6):
             os.remove(firstrun)
 
         createsettingsjson(inv)
-
+            
         ######
         #  Always delete lockfiles and FCRunning etc... but only delete pkl if too old?
         for file in os.listdir(setts["cache_location"]):
@@ -548,10 +631,7 @@ for inv in range(1,6):
             if not filename.__contains__("log") and not filename.startswith("rateData") and not filename.startswith(".dayRate") and not filename.startswith(".nightRate") and not filename.startswith("allsettings") and not filename.startswith("v2env") and not filename.startswith(".v3upgrade"):
                 os.remove(setts['cache_location']+"/"+file)
         if exists(setts["cache_location"]+"/rateData_"+str(inv)+".pkl"):
-            if "TZ" in os.environ:
-                timezone=zoneinfo.ZoneInfo(key=setts["TZ"])
-            else:
-                timezone=zoneinfo.ZoneInfo(key="Europe/London")
+            timezone=zoneinfo.ZoneInfo(key=setts["timezone"])
             modDay= datetime.fromtimestamp(os.path.getmtime(setts["cache_location"]+"/rateData_"+str(inv)+".pkl")).date()
             if modDay<datetime.now(timezone).date():
                 logger.debug("Old rate data cache not updated today, so deleting")
@@ -585,20 +665,11 @@ for inv in range(1,6):
             logger.info ("Running Invertor "+str(inv)+" ("+str(setts["serial_number_"+str(inv)])+") read loop every "+str(setts['self_run_timer'])+"/"+str(setts['self_run_timer_full'])+"s")
             selfRun[inv]=subprocess.Popen(["/usr/local/bin/python3",PATH+"/read.py", "start"])
 
-
+        
         GUPORT=6344+inv
         logger.debug ("Starting Gunicorn on port "+str(GUPORT))
         command=shlex.split("/usr/local/bin/gunicorn -w 3 -b :"+str(GUPORT)+" REST:giv_api")
         gunicorn[inv]=subprocess.Popen(command)
-
-if setts['evc_enable']==True:
-    if not setts['evc_ip_address']=="":
-        logger.info ("Running EVC read loop every "+str(setts['evc_self_run_timer'])+"s")
-        evcSelfRun=subprocess.Popen(["/usr/local/bin/python3",PATH+"/evc.py", "self_run2"])
-        evcChargeModeLoop=subprocess.Popen(["/usr/local/bin/python3",PATH+"/evc.py", "chargeMode"])
-        logger.debug ("Setting chargeMode loop to manage different charge modes every 60s")
-    else:
-        logger.info("EVC IP is missing from config. Please update and restart GivTCP")
 
 
 if setts['Web_Dash']==True:
@@ -608,28 +679,29 @@ if setts['Web_Dash']==True:
     with open("app.json", 'w') as outp:
         outp.write("{\n")
         outp.write("  \"givTcpHosts\": [\n")
-
+        count=0
         for inv in runninginv:
             GUPORT = 6344 + inv
-            if inv > 1:
+            if count > 1:
                 outp.write("  ,{\n")
             else:
                 outp.write("  {\n")
             outp.write("    \"name\": \""+setts['inverterName_'+str(inv)]+"\",\n")
             outp.write("    \"port\": \""+str(GUPORT)+"\"\n")
             outp.write("  }\n")
+            count+=1
 
         outp.write("  ],\n")
         outp.write("  \"solarRate\": "+str(setts['day_rate'])+",\n")
         outp.write("  \"exportRate\": "+str(setts['export_rate'])+"\n")
         outp.write("}")
-
     WDPORT=int(setts['Web_Dash_Port'])
     logger.info (f"Serving Web Dashboard from port {WDPORT}")
     with open("/etc/nginx/http.d/webdashboard.conf", 'w') as wd:
         wd.write("server {\n")
         wd.write(f"\tlisten {WDPORT};\n")
         wd.write("\tlocation / {\n")
+        wd.write("\tadd_header 'Access-Control-Allow-Origin' '*';\n")
         wd.write("\t\troot /app/WebDashboard;\n")
         wd.write("\t\tindex index.html;\n\n")
         wd.write("\t\ttry_files $uri $uri/ =404;\n")
@@ -649,7 +721,6 @@ if setts['Smart_Target']==True:
 while True:
     try:
         for inv in runninginv:
-            #regCacheStack=get_regcache(setts['cache_location']+"/regCache_"+str(inv)+".pkl",inv)
             if exists(setts['cache_location']+"/lastUpdate_"+str(inv)+".pkl"):
                 with open(setts['cache_location']+"/lastUpdate_"+str(inv)+".pkl", 'rb') as inp:
                     previousUpdate = pickle.load(inp)
@@ -657,7 +728,7 @@ while True:
                     timesince=(((timediff.seconds*1000000)+timediff.microseconds)/1000000)
                     logger.debug("timesince last read= "+str(timesince))
             else:
-                sleep(10)       #wait for first regcache then go back round loop
+                sleep(10)
                 continue
             PATH= "/app/GivTCP_"+str(inv)
             if setts['self_run']==True:
@@ -667,7 +738,7 @@ while True:
                     os.chdir(PATH)
                     logger.info ("Restarting Invertor read loop every "+str(setts['self_run_timer'])+"s")
                     selfRun[inv]=subprocess.Popen(["/usr/local/bin/python3",PATH+"/read.py", "start"])
-                elif timesince>(float(setts['self_run_timer'])*5):
+                elif timesince>(float(setts['self_run_timer'])*10):
                     logger.error("Self Run loop process stuck. Killing and restarting...")
                     os.chdir(PATH)
                     selfRun[inv].kill()
@@ -681,7 +752,7 @@ while True:
                 logger.info ("Starting Gunicorn on port "+str(GUPORT))
                 command=shlex.split("/usr/local/bin/gunicorn -w 3 -b :"+str(GUPORT)+" REST:giv_api")
                 gunicorn[inv]=subprocess.Popen(command)
-
+        
         if setts['MQTT_Address']=="127.0.0.1":
             if not mqttBroker.poll()==None:
                 mqttBroker.kill()
@@ -696,13 +767,13 @@ while True:
                 logger.error("EVC Self Run loop process died. restarting...")
                 os.chdir(PATH)
                 logger.info ("Restarting EVC read loop every "+str(setts['evc_self_run_timer'])+"s")
-                selfRun[inv]=subprocess.Popen(["/usr/local/bin/python3",PATH+"/evc.py", "self_run2"])
+                selfRun[inv]=subprocess.Popen(["/usr/local/bin/python3","/app/GivTCP/evc.py", "self_run2"])
             if not evcChargeModeLoop.poll()==None:
                 evcChargeModeLoop.kill()
                 logger.error("EVC Self Run loop process died. restarting...")
                 os.chdir(PATH)
                 logger.info ("Restarting EVC chargeMode loop every 60s")
-                evcChargeModeLoop=subprocess.Popen(["/usr/local/bin/python3",PATH+"/evc.py", "chargeMode"])
+                evcChargeModeLoop=subprocess.Popen(["/usr/local/bin/python3","/app/GivTCP/evc.py", "chargeMode"])
 
         ## Could we run a periodic Time Sync check? Maybe a config item??
     except:

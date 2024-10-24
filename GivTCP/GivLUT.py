@@ -120,7 +120,7 @@ class GivLUT:
                 except:
                     file_age=datetime.datetime.now(datetime.timezone.utc)
                 timesince=datetime.datetime.now(datetime.timezone.utc) - file_age
-                if timesince.total_seconds>10:
+                if timesince.total_seconds()>10:
                     logger.error("regCache Lockfile is too old, forcibly removing...")
                     remove(GivLUT.cachelockfile)
                 while True:
@@ -155,8 +155,6 @@ class GivLUT:
         
     def put_regcache(regCacheStack):
 
-        with open(str(GiV_Settings.cache_location)+"/v3testdata.txt","a") as outp:
-            outp.write(datetime.datetime.now().isoformat()+": put_regcache - Grid Power is: "+str(regCacheStack[-1]['Power']['Power']['Grid_Power'])+str("\n"))
         count=0
         if exists(GivLUT.cachelockfile):
             while True:

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from givenergy_modbus_async.model.register import Model, Generation, Enable
 from givenergy_modbus_async.model.plant import Plant, Inverter
-from givenergy_modbus_async.model.battery import Battery
 from givenergy_modbus_async.client.client import commands
 from givenergy_modbus_async.model.register import HR
 from givenergy_modbus_async.exceptions import CommunicationError
@@ -23,7 +22,6 @@ from datetime import timedelta
 import asyncio
 from typing import Callable, Optional
 from mqtt import GivMQTT
-#from outliers import outlierRemoval
 
 logging.getLogger("givenergy_modbus_async").setLevel(logging.CRITICAL) 
 logging.getLogger("rq.worker").setLevel(logging.CRITICAL)
@@ -33,6 +31,7 @@ sys.path.append(GiV_Settings.default_path)
 givLUT = Entity_Type.entity_type
 logger = GivLUT.logger
 
+outliers=[]
 
 def commsFailure():
     fname="commsfailure_"+str(GiV_Settings.givtcp_instance)+".pkl"
@@ -109,7 +108,7 @@ async def watch_plant(
             try:
                 if not client.connected:
                     #in case the client has died, reopen it
-                    logger.info("Re-opening Modbus Connecion to: "+str(GiV_Settings.invertorIP))
+                    logger.debug("Re-opening Modbus Connecion to: "+str(GiV_Settings.invertorIP))
                     await client.connect()
                 # Write command and initiation to use the same client connection
                 if exists(GivLUT.writerequests):
@@ -774,7 +773,7 @@ def processInverterInfo(plant: Plant):
 
         # Check a couple of obvious data points to reject bad reads
         if float(GEInv.modbus_version)>2 or GEInv.modbus_address>100 or GEInv.user_code>100 or GEInv.temp_inverter_heatsink>100:
-            logger.info("Dodgy Data so using last cache...")
+            logger.debug("Dodgy Data so using last cache...")
             return multi_output_old
 
         # If System Time is wrong (default date) use last good time or local time if all else fails
@@ -788,7 +787,6 @@ def processInverterInfo(plant: Plant):
         else:
             # Use latest data if its not default date
             inverter['Invertor_Time'] = GEInv.system_time.replace(tzinfo=GivLUT.timezone).isoformat()
-        inv_time=datetime.datetime.strptime(inverter['Invertor_Time'], '%Y-%m-%dT%H:%M:%S%z')
 
     ############  Energy Stats    ############
         # Total Energy Figures
@@ -1097,11 +1095,6 @@ def processInverterInfo(plant: Plant):
         multi_output["Meter_Details"] = meters
         if GiV_Settings.Print_Raw_Registers:
             multi_output['raw'] = getRaw(plant)
-        
-        with open(str(GiV_Settings.cache_location)+"/v3testdata.txt","a") as outp:
-            outp.write("--------------------------------------------------\n")
-            outp.write(datetime.datetime.now().isoformat()+": processInvertorInfo (presmoothing) - Grid Power is: "+str(plant.inverter.p_grid_out)+str("\n"))
-
     except Exception:
         e = sys.exc_info() ,sys.exc_info()[2].tb_lineno
         #e=sys.exc_info()[0].__name__, os.path.basename(sys.exc_info()[2].tb_frame.f_code.co_filename), sys.exc_info()[2].tb_lineno
@@ -1123,13 +1116,13 @@ def processEMSInfo(plant: Plant):
         ems['Serial_Number']=GEInv.getsn()
         ems['Invertor_Type'] = GEInv.generation + " - " + GEInv.model.name.capitalize()
         ems['Invertor_Firmware']=GEInv.firmware_version
-        ems['System_Time']=GEInv.system_time
+        ems['Invertor_Time']=GEInv.system_time.replace(tzinfo=GivLUT.timezone).isoformat()
         ems['Remaining_Battery_Wh']=GEInv.remaining_battery_wh
         ems['Invertor_Serial_Number']=plant.inverter_serial_number
         ems['Export_Limit']=GEInv.grid_port_max_power_output
         
         inverters={}
-        if GEInv.inverter_1_power:
+        if GEInv.inverter_1_serial_number:
             inv1={}
             inv1['Power']=GEInv.inverter_1_power
             inv1['SOC']=GEInv.inverter_1_soc
@@ -1138,7 +1131,7 @@ def processEMSInfo(plant: Plant):
             inv1['status']=GEInv.inverter_1_status
             inverters[GEInv.inverter_1_serial_number]=inv1
 
-        if GEInv.inverter_2_power:
+        if GEInv.inverter_2_serial_number:
             inv2={}
             inv2['Power']=GEInv.inverter_2_power
             inv2['SOC']=GEInv.inverter_2_soc
@@ -1147,7 +1140,7 @@ def processEMSInfo(plant: Plant):
             inv2['status']=GEInv.inverter_2_status
             inverters[GEInv.inverter_2_serial_number]=inv2
 
-        if GEInv.inverter_3_power:
+        if GEInv.inverter_3_serial_number:
             inv3={}
             inv3['Power']=GEInv.inverter_3_power
             inv3['SOC']=GEInv.inverter_3_soc
@@ -1156,7 +1149,7 @@ def processEMSInfo(plant: Plant):
             inv3['status']=GEInv.inverter_3_status
             inverters[GEInv.inverter_3_serial_number]=inv3
         
-        if GEInv.inverter_4_power:
+        if GEInv.inverter_4_serial_number:
             inv4={}
             inv4['Power']=GEInv.inverter_4_power
             inv4['SOC']=GEInv.inverter_4_soc
@@ -1470,7 +1463,6 @@ def processThreePhaseInfo(plant: Plant):
         else:
             # Use latest data if its not default date
             inverter['Invertor_Time'] = GEInv.system_time.replace(tzinfo=GivLUT.timezone).isoformat()
-        inv_time=datetime.datetime.strptime(inverter['Invertor_Time'], '%Y-%m-%dT%H:%M:%S%z')
 
         if GiV_Settings.Print_Raw_Registers:
             multi_output['raw'] = getRaw(plant)
@@ -1679,9 +1671,6 @@ def processData(plant: Plant):
         if len(regCacheStack)>1:
             multi_output=dataCleansing(multi_output,regCacheStack[-1])
 
-        with open(str(GiV_Settings.cache_location)+"/v3testdata.txt","a") as outp:
-            outp.write(datetime.datetime.now().isoformat()+": processData (post smoothing) - Grid Power is: "+str(multi_output['Power']['Power']['Grid_Power'])+str("\n"))
-
 ### Outlier removal for multi_output
 #        if len(regCacheStack)>100:
 #            logger.debug("Running outlier removal")
@@ -1699,9 +1688,6 @@ def processData(plant: Plant):
             multi_output = calcBatteryValue(multi_output)
             logger.debug("Battery rate calcs complete")
 
-        with open(str(GiV_Settings.cache_location)+"/v3testdata.txt","a") as outp:
-            outp.write(datetime.datetime.now().isoformat()+": processData (post rateData) - Grid Power is: "+str(multi_output['Power']['Power']['Grid_Power'])+str("\n"))
-
 
         # Get lastupdate from pickle if it exists
         if exists(GivLUT.lastupdate):
@@ -1718,8 +1704,9 @@ def processData(plant: Plant):
         # Add new data to the stack (cap at 1hr history) and save
         #if len(regCacheStack)>1000:
         if len(regCacheStack)>0:
-            earliest_cache_age=(datetime.datetime.now(GivLUT.timezone)-datetime.datetime.strptime(finditem(regCacheStack[0],"Invertor_Time"), '%Y-%m-%dT%H:%M:%S%z'))
-            if earliest_cache_age.seconds>3600:
+            #earliest_cache_age=(datetime.datetime.now(GivLUT.timezone)-datetime.datetime.strptime(finditem(regCacheStack[0],"Invertor_Time"), '%Y-%m-%dT%H:%M:%S%z'))
+            #if earliest_cache_age.seconds>3600:
+            if len(regCacheStack)>10:
                 regCacheStack.pop(0)
         regCacheStack.append(multi_output)
         GivLUT.put_regcache(regCacheStack)
@@ -1835,9 +1822,6 @@ def runAll2(plant: Plant):  # Read from Inverter put in cache and publish
         logger.debug("processData result: "+str(result['result']))
         # Only publish if its new data?
         logger.debug("Running pubFromPickle")
-        with open(str(GiV_Settings.cache_location)+"/v3testdata.txt","a") as outp:
-            outp.write(datetime.datetime.now().isoformat()+": runAll handoff - Grid Power is: "+str(result['multi_output']['Power']['Power']['Grid_Power'])+str("\n"))
-
         multi_output = pubFromPickle(result['multi_output'])
     except Exception:
         e=sys.exc_info()[0].__name__, os.path.basename(sys.exc_info()[2].tb_frame.f_code.co_filename), sys.exc_info()[2].tb_lineno
@@ -1856,8 +1840,6 @@ def pubFromPickle(multi_output={}):  # Publish last cached Inverter Data
                 if regCacheStack:
                     multi_output = regCacheStack[-1]
             SN = finditem(multi_output,'Invertor_Serial_Number')
-            with open(str(GiV_Settings.cache_location)+"/v3testdata.txt","a") as outp:
-                outp.write(datetime.datetime.now().isoformat()+": pubFromPickle - Grid Power is: "+str(multi_output['Power']['Power']['Grid_Power'])+str("\n"))
             publishOutput(multi_output, SN)
         else:
             multi_output['result'] = result
@@ -1904,13 +1886,12 @@ def publishOutput(array, SN):
     # Additional Publish options can be added here.
     # A separate file in the folder can be added with a new publish "plugin"
     # then referenced here with any settings required added into settings.py
-
+    if GiV_Settings.Battery_Only==True:
+        temp=array['Battery_Details']
+        array={}
+        array['Battery_Details']=temp
     tempoutput = {}
     tempoutput = iterate_dict(array)
-
-    with open(str(GiV_Settings.cache_location)+"/v3testdata.txt","a") as outp:
-        outp.write(datetime.datetime.now().isoformat()+": publishOutput - Grid Power is: "+str(array['Power']['Power']['Grid_Power'])+str("\n"))
-
 
 #    threader = Threader(5)
     if GiV_Settings.MQTT_Output:
@@ -2208,8 +2189,6 @@ def dataSmoother2(dataNew, dataOld, lastUpdate, invtype,inv_time):
     elif GiV_Settings.data_smoother.lower() == "medium":
         smoothRate = 0.35
         abssmooth=5000
-    elif GiV_Settings.data_smoother.lower() == "none":
-        return(newData)
     else:
         smoothRate = 0.50
         abssmooth=7000
@@ -2254,15 +2233,20 @@ def dataSmoother2(dataNew, dataOld, lastUpdate, invtype,inv_time):
                 return oldData
 
 ## Now smooth data
-        if lookup.smooth:     # apply smoothing if required
+        if lookup.smooth and not GiV_Settings.data_smoother.lower() == "none":     # apply smoothing if required
             if newData != oldData:  # Only if its not the same
+                if name in outliers:    #If the last data point was skipped then keep newdata as two dodgy reads is unlikely
+                    logger.debug("Returning new "+str(name)+" data as the last read was smoothed")
+                    outliers.remove(name)
+                    return newData
                 if any(word in name.lower() for word in ["power","_to_"]):
                     if abs(newData-oldData)>abssmooth:                                
                         if checkRawcache(newData,name,abssmooth): #If new data is persistently outside bounds then use new value
                             return(newData)
                         else:
-                            logger.info(str(name)+" jumped too far in a single read: "+str(oldData)+"->"+str(newData)+" so using previous value")
-                            return(oldData)
+                            logger.debug(str(name)+" jumped too far in a single read: "+str(oldData)+"->"+str(newData)+" so using previous value")
+                            outliers.append(name)
+                            return (oldData)
                 else:
                     ## Only smooth data if its not already Zero (avoid div by Zero)
                     if oldData != 0:
@@ -2271,8 +2255,9 @@ def dataSmoother2(dataNew, dataOld, lastUpdate, invtype,inv_time):
                         timeDelta = (now-then).total_seconds()
                         dataDelta = abs(newData-oldData)/oldData    #Should it be a ratio or an abs value as low values easily meet the threshold
                         if dataDelta > smoothRate and timeDelta < 60:
-                            logger.info(str(name)+" jumped too far in a single read: "+str(oldData)+"->"+str(newData)+" so using previous value")
-                            return(oldData)
+                            logger.debug(str(name)+" jumped too far in a single read: "+str(oldData)+"->"+str(newData)+" so using previous value")
+                            outliers.append(name)
+                            return (oldData)
 
     return(newData)
 
@@ -2285,7 +2270,7 @@ def checkRawcache(newData,name,abssmooth):
         oldData=rawCacheStack[1]['invertor'][GivLUT.raw_to_pub[name]]
         if abs(newData-oldData)>abssmooth:
             bigjump=True
-        logger.info("NewData is: "+str(newData)+" and cached raw value was: "+str(oldData))
+        logger.debug("NewData is: "+str(newData)+" and cached raw value was: "+str(oldData))
     return bigjump
 
 
