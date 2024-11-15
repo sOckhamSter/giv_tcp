@@ -683,6 +683,7 @@ if setts['Web_Dash']==True:
         outp.write("  \"givTcpHosts\": [\n")
         count=0
         for inv in runninginv:
+            count += 1
             GUPORT = 6344 + inv
             if count > 1:
                 outp.write("  ,{\n")
@@ -691,7 +692,6 @@ if setts['Web_Dash']==True:
             outp.write("    \"name\": \""+setts['inverterName_'+str(inv)]+"\",\n")
             outp.write("    \"port\": \""+str(GUPORT)+"\"\n")
             outp.write("  }\n")
-            count+=1
 
         outp.write("  ],\n")
         outp.write("  \"solarRate\": "+str(setts['day_rate'])+",\n")
