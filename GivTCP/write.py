@@ -1400,7 +1400,7 @@ async def setDateTime(payload,readloop=False):
 async def setBatteryCalibration(payload,readloop=False):
     """Kicks off a Battery Calibration using a value in the range: [0:'Off',1:'Start',3:'Charge Only']
 
-    Payload: {"state":1}
+    Payload: {"state":"Off"}
     """
     temp={}
     targetresult="Success"

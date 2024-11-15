@@ -207,6 +207,7 @@ def findinv(networks):
     inverterStats={}
     invList={}
     evclist={}
+    validevclist=[]
     if len(networks)>0:
     # For each interface scan for inverters
         logger.debug("Networks available for scanning are: "+str(networks))
@@ -232,7 +233,7 @@ def findinv(networks):
                             sn=validateEVC(evclist[evc])
                             if sn:
                                 logger.info("GivEVC "+str(sn)+" found at: "+str(evclist[evc]))
-                                evclist[evc]=[evclist[evc],sn]
+                                validevclist.append([evclist[evc],sn])
                             else:
                                 logger.debug(evclist[evc]+" is not an EVC")
                                 poplist.append(evc)
@@ -242,7 +243,7 @@ def findinv(networks):
                     count=0
                     while len(list)<=0:
                         if count<2:
-                            logger.info("INV- Scanning network ("+str(count+1)+"):"+str(networks[subnet]))
+                            logger.debug("INV- Scanning network ("+str(count+1)+"):"+str(networks[subnet]))
                             list=findInvertor(networks[subnet])
                             if len(list)>0: break
                             count=count+1
@@ -275,7 +276,7 @@ def findinv(networks):
             logger.error("Error scanning for Inverters- "+str(e))
     else:
         logger.error("Unable to get host details from Supervisor / Container")
-    return inverterStats, invList, evclist
+    return inverterStats, invList, validevclist
 
 ###############################
 #                             #
@@ -386,7 +387,8 @@ if isAddon:
             ip=str(interface['ipv4']['address']).split('/')[0][2:]
             mask=str(interface['ipv4']['address']).split('/')[1][:-2]
             hostIP=ip
-            networks[i]=interface['ipv4']['gateway']+"/"+str(mask)
+            networks[i]=str(interface['ipv4']['address'][0])
+            #networks[i]=interface['ipv4']['gateway']+"/"+str(mask)
             logger.info("Network Found: "+str(networks[i]))
         i=i+1
 else:
@@ -495,11 +497,11 @@ for inv in inverterStats:
         
 
 if len(evcList)>0:
-    logger.info("evcList: "+str(evcList))
+    logger.debug("evcList: "+str(evcList))
     if setts["evc_ip_address"]=="":
-        setts["evc_ip_address"]=evcList[1][0]
+        setts["evc_ip_address"]=evcList[0][0]
     if setts["serial_number_evc"]=="":
-        setts["serial_number_evc"]=evcList[1][1]
+        setts["serial_number_evc"]=evcList[0][1]
 
 ## Get legacy settings if they exist
 if exists("/config/GivTCP/v2env.pkl") and v3upgrade:

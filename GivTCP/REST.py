@@ -14,6 +14,7 @@ import datetime
 import json
 from settings import GiV_Settings
 from inspect import getmembers, isfunction, getsource
+from givenergy_modbus_async.model import TimeSlot
 
 logger = GivLUT.logger
 #set-up Flask details
@@ -645,6 +646,16 @@ def frceCharge():
     requestcommand("setForceCharge",payload['state'])
     return response("setForceCharge")
 
+@giv_api.route('/setBatteryCalibration', methods=['POST'])
+def setCalib():
+    """Trigger or stop a Battery Calibration
+
+    Payload: {'state':'off' or 'start'}
+    """
+    payload = request.get_json(silent=True, force=True)
+    requestcommand("setBatteryCalibration",payload)
+    return response("setBatteryCalibration")
+
 @giv_api.route('/setACCharge', methods=['POST'])
 def setSCChrg():
     """Enables AC Charge on Three Phase Inverters
@@ -733,6 +744,10 @@ def getapicalls():
     with open('api.json', 'w') as f:
         f.write(json.dumps(output, indent=4))
     return output
+
+def start():
+    #getapicalls()
+    getAll()
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:

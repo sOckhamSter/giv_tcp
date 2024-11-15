@@ -413,7 +413,7 @@ def set_enable_charge(enabled: bool, inv_type: str="") -> list[TransparentReques
     """Enable the battery to charge, depending on the mode and slots set."""
     if "3ph" in inv_type:
         reqs=[WriteHoldingRegisterRequest(RegisterMap.FORCE_CHARGE_ENABLE, enabled)]
-        reqs.extend(WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, enabled))
+        reqs.append(WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, enabled))
         return reqs
     else:
         return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, enabled)]

@@ -6,7 +6,7 @@ import logging
 import pickle
 import datetime
 from os.path import exists
-from os import remove
+from os import remove, path
 from time import sleep
 import sys
 
@@ -17,17 +17,20 @@ _client = Client(GiV_Settings.invertorIP,8899)
 
 class GivClientAsync:
     async def get_connection(cold_start=False):
-        global _client
-        if cold_start:
-            # Kil any open connections if its a "cold start" to avoid any stuck connections open in the event of a watch_plant restart
-            if _client.connected:
-                logger.info("Closing open modbus connection on start of watch_plant loop")
-                await _client.close()
-        if not _client.connected:
-            logger.critical("Opening Modbus Connection to "+str(GiV_Settings.invertorIP))
-            await _client.connect()
-        return _client
-
+        try:
+            global _client
+            if cold_start:
+                # Kil any open connections if its a "cold start" to avoid any stuck connections open in the event of a watch_plant restart
+                if _client.connected:
+                    logger.info("Closing open modbus connection on start of watch_plant loop")
+                    await _client.close()
+            if not _client.connected:
+                logger.critical("Opening Modbus Connection to "+str(GiV_Settings.invertorIP))
+                await _client.connect()
+            return _client
+        except:
+            e=sys.exc_info()[0].__name__, path.basename(sys.exc_info()[2].tb_frame.f_code.co_filename), sys.exc_info()[2].tb_lineno
+            logger.error ("Error in getting Modbus Connection: "+str(e))
 
 class GivQueue:
     from redis import Redis

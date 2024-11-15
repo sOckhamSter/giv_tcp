@@ -4,6 +4,7 @@ from givenergy_modbus_async.model.plant import Plant, Inverter
 from givenergy_modbus_async.client.client import commands
 from givenergy_modbus_async.model.register import HR
 from givenergy_modbus_async.exceptions import CommunicationError
+from givenergy_modbus_async.model import TimeSlot
 import sys
 import json
 import logging
@@ -112,55 +113,60 @@ async def watch_plant(
                     await client.connect()
                 # Write command and initiation to use the same client connection
                 if exists(GivLUT.writerequests):
-                    logger.debug("Write Request recieved")
-                    with open(GivLUT.writerequests, 'rb') as inp:
-                        writecommands= pickle.load(inp)
-                    for command in writecommands:
-                        # call wr command and pass parameters
-                        logger.debug("Command: "+str(command[0])+" was recieved: "+str(command[1]))
-                        if hasattr(write, command[0]):
-                            func = getattr(write, command[0])
-                            if inspect.iscoroutinefunction(func):
-                                result = await func(command[1],True)
-                            else:
-                                result = func(command[1],True)
-                            #send result to touchfile for REST response
-                            if command[2]==True:
-                                response={}
-                                responses=[]
-                                response['id']=command[0]
-                                response['result']=result
-                                if exists(GivLUT.restresponse):
-                                    with GivLUT.restlock:
-                                        with open(GivLUT.restresponse,'r') as inp:
-                                            responses=json.load(inp)
-                                    responses.append(response)
-                                    logger.debug("responses is: "+str(responses))
+                    try:
+                        logger.debug("Write Request recieved")
+                        with open(GivLUT.writerequests, 'rb') as inp:
+                            writecommands= pickle.load(inp)
+                        for command in writecommands:
+                            # call wr command and pass parameters
+                            logger.debug("Command: "+str(command[0])+" was recieved: "+str(command[1]))
+                            if hasattr(write, command[0]):
+                                func = getattr(write, command[0])
+                                if inspect.iscoroutinefunction(func):
+                                    result = await func(command[1],True)
                                 else:
-                                    responses.append(response)
-                                    logger.debug("responses is: "+str(responses))
-                                with GivLUT.restlock:
-                                    with open(GivLUT.restresponse,'w') as outp:
-                                        outp.write(json.dumps(responses))
-                            await asyncio.sleep(0.3)        #Pause between commands for 300ms
+                                    result = func(command[1],True)
+                                #send result to touchfile for REST response
+                                if command[2]==True:
+                                    response={}
+                                    responses=[]
+                                    response['id']=command[0]
+                                    response['result']=result
+                                    if exists(GivLUT.restresponse):
+                                        with GivLUT.restlock:
+                                            with open(GivLUT.restresponse,'r') as inp:
+                                                responses=json.load(inp)
+                                        responses.append(response)
+                                        logger.debug("responses is: "+str(responses))
+                                    else:
+                                        responses.append(response)
+                                        logger.debug("responses is: "+str(responses))
+                                    with GivLUT.restlock:
+                                        with open(GivLUT.restresponse,'w') as outp:
+                                            outp.write(json.dumps(responses))
+                                await asyncio.sleep(0.3)        #Pause between commands for 300ms
 
-                ## Check write file for anything more since opening and loop again
-                    with open(GivLUT.writerequests, 'rb') as inp:
-                        newwritecommands= pickle.load(inp)
-                    logger.debug("Write Commands lengths: "+str(len(writecommands))+" -> "+str(len(newwritecommands)))
-                    if len(newwritecommands)==len(writecommands):     #Only remove if no more commands recieved
-                        logger.debug("No new writes, removing writerequest file")
+                    ## Check write file for anything more since opening and loop again
+                        with open(GivLUT.writerequests, 'rb') as inp:
+                            newwritecommands= pickle.load(inp)
+                        logger.debug("Write Commands lengths: "+str(len(writecommands))+" -> "+str(len(newwritecommands)))
+                        if len(newwritecommands)==len(writecommands):     #Only remove if no more commands recieved
+                            logger.debug("No new writes, removing writerequest file")
+                            os.remove(GivLUT.writerequests)
+                        else:
+                        #    #Loop straight back to proces smore write commands
+                            logger.debug("Looping back to mop up incoming write commands")
+                            ## remove old command before looping back
+                            for i in newwritecommands[:]:
+                                if i in writecommands:
+                                    newwritecommands.remove(i)
+                            with open(GivLUT.writerequests,'wb') as outp:
+                                pickle.dump(newwritecommands, outp, pickle.HIGHEST_PROTOCOL)
+                            continue
+                    except:
+                        e=sys.exc_info()[0].__name__, os.path.basename(sys.exc_info()[2].tb_frame.f_code.co_filename), sys.exc_info()[2].tb_lineno
+                        logger.error(str(command[0])+" request error: "+str(e)+" deleting all pending requests, please try again")
                         os.remove(GivLUT.writerequests)
-                    else:
-                    #    #Loop straight back to proces smore write commands
-                        logger.debug("Looping back to mop up incoming write commands")
-                        ## remove old command before looping back
-                        for i in newwritecommands[:]:
-                            if i in writecommands:
-                                newwritecommands.remove(i)
-                        with open(GivLUT.writerequests,'wb') as outp:
-                            pickle.dump(newwritecommands, outp, pickle.HIGHEST_PROTOCOL)
-                        continue
 
                 timesincelast=datetime.datetime.now()-lastruntime
                 if timesincelast.total_seconds() < refresh_period:
@@ -171,7 +177,7 @@ async def watch_plant(
                 if not passive:
                     #Check time since last full_refresh
                     timesincefull=datetime.datetime.now()-lastfulltime
-                    if timesincefull.total_seconds() > full_refresh_period or exists(".fullrefresh") or GiV_Settings.inverter_type.lower()=="gateway":      #always run full refresh for Gateway
+                    if timesincefull.total_seconds() > full_refresh_period or exists(".fullrefresh") or GiV_Settings.inverter_type.lower()=="gateway" or datetime.datetime.now(GivLUT.timezone).time() == datetime.time(0, 0):      #always run full refresh for Gateway or at midnight
                         fullRefresh=True
                         logger.debug ("Running full refresh")
                         lastfulltime=datetime.datetime.now()
@@ -278,6 +284,7 @@ def getInvModel(plant: Plant):
             maxBatChargeRate=5000
         else:
             maxBatChargeRate=3600
+
     # Calc max charge rate
     if inverterModel.model in[Model.AC_3PH,Model.HYBRID_3PH]:
         inverterModel.batmaxrate=GEInv.battery_max_power
@@ -573,7 +580,7 @@ def getControls(plant,regCacheStack, inverterModel,multi_output_old=None):
         else:
             discharge_schedule="disable"    #Default to off
 
-        if GEInv.force_charge_enable=="enable" and GEInv.ac_charge_enable=="enable":
+        if GEInv.force_charge_enable==Enable.ENABLE and GEInv.ac_charge_enable==Enable.ENABLE:
             charge_schedule = "enable"
         else:
             charge_schedule = "disable"
@@ -1166,7 +1173,7 @@ def processEMSInfo(plant: Plant):
         power_output['Generation_Load_Power']=GEInv.total_generation_load_power
         power_output['Total_Power']=GEInv.p_inverter_active
         power_output['Battery_Power']=GEInv.total_battery_power
-        power_output['Other_Battery_Power']=GEInv.other_battery_power
+        power_output['Other_Battery_Power']=GEInv.other_battery_power        
 
         energy={}
         energy_total_output = {}
@@ -1306,6 +1313,81 @@ def processGatewayInfo(plant: Plant):
         power_output['Grid_Relay_Voltage']=GEInv.v_grid_relay
         power_output['Inverter_Relay_Voltage']=GEInv.v_inverter_relay
         power_output['Invertor_Power']=-GEInv.p_aio_total
+        
+        Battery_power=-GEInv.p_aio_total
+        if Battery_power >= 0:
+            discharge_power = abs(Battery_power)
+            charge_power = 0
+            power_output['Charge_Time_Remaining'] = 0
+            #power_output['Charge_Completion_Time'] = finaltime.replace(tzinfo=GivLUT.timezone).isoformat()
+            if discharge_power!=0:
+                # Time to get from current SOC to battery Reserve at the current rate
+                power_output['Discharge_Time_Remaining'] = max(int(inverterModel.batterycapacity*((power_output['SOC'] - controlmode['Battery_Power_Reserve'])/100) / (discharge_power/1000) * 60),0)
+                finaltime=datetime.datetime.now() + timedelta(minutes=power_output['Discharge_Time_Remaining'])
+                power_output['Discharge_Completion_Time'] = finaltime.replace(tzinfo=GivLUT.timezone).isoformat()
+            else:
+                power_output['Discharge_Time_Remaining'] = 0
+                #power_output['Discharge_Completion_Time'] = datetime.datetime.now().replace(tzinfo=GivLUT.timezone).isoformat()
+        elif Battery_power <= 0:
+            discharge_power = 0
+            charge_power = abs(Battery_power)
+            power_output['Discharge_Time_Remaining'] = 0
+            #power_output['Discharge_Completion_Time'] = datetime.datetime.now().replace(tzinfo=GivLUT.timezone).isoformat()
+            if charge_power!=0:
+                # Time to get from current SOC to target SOC at the current rate (Target SOC-Current SOC)xBattery Capacity
+                power_output['Charge_Time_Remaining'] = max(int(inverterModel.batterycapacity*((controlmode['Target_SOC'] - power_output['SOC'])/100) / (charge_power/1000) * 60),0)
+                finaltime=datetime.datetime.now() + timedelta(minutes=power_output['Charge_Time_Remaining'])
+                power_output['Charge_Completion_Time'] = finaltime.replace(tzinfo=GivLUT.timezone).isoformat()
+            else:
+                power_output['Charge_Time_Remaining'] = 0
+
+        grid_power = GEInv.p_ac1
+        if grid_power < 0:
+            import_power = abs(grid_power)
+            export_power = 0
+        elif grid_power > 0:
+            import_power = 0
+            export_power = abs(grid_power)
+        else:
+            import_power = 0
+            export_power = 0
+
+        # Power flows
+        power_flow_output={}
+        logger.debug("Getting Solar to H/B/G Power Flows")
+        if GEInv.p_pv > 0:
+            S2H = min(GEInv.p_pv, GEInv.p_load)
+            power_flow_output['Solar_to_House'] = S2H
+            S2B = max((GEInv.p_pv-S2H)-export_power, 0)
+            power_flow_output['Solar_to_Battery'] = S2B
+            power_flow_output['Solar_to_Grid'] = max(GEInv.p_pv - S2H - S2B, 0)
+
+        else:
+            power_flow_output['Solar_to_House'] = 0
+            power_flow_output['Solar_to_Battery'] = 0
+            power_flow_output['Solar_to_Grid'] = 0
+
+        # Battery to House
+        logger.debug("Getting Battery to House Power Flow")
+        B2H = max(discharge_power-export_power, 0)
+        power_flow_output['Battery_to_House'] = B2H
+
+        # Grid to Battery/House Power
+        logger.debug("Getting Grid to Battery/House Power Flow")
+        if import_power > 0:
+            power_flow_output['Grid_to_Battery'] = charge_power-max(GEInv.p_pv-GEInv.p_load, 0)
+            power_flow_output['Grid_to_House'] = max(import_power-charge_power, 0)
+
+        else:
+            power_flow_output['Grid_to_Battery'] = 0
+            power_flow_output['Grid_to_House'] = 0
+
+        # Battery to Grid Power
+        logger.debug("Getting Battery to Grid Power Flow")
+        if export_power > 0:
+            power_flow_output['Battery_to_Grid'] = max(discharge_power-B2H, 0)
+        else:
+            power_flow_output['Battery_to_Grid'] = 0
 
 
     ### Is this bit right? If not parallel then are there multiple aios to check? Can you have multiple AIOs not in parallel mode?
@@ -1422,6 +1504,7 @@ def processGatewayInfo(plant: Plant):
         energy["Total"] = energy_total_output
         power={}
         power['Power']=power_output
+        power["Flows"] = power_flow_output
         multi_output['Inverters']=inverters
         multi_output["Power"]  = power
         multi_output["Energy"] = energy
@@ -1451,6 +1534,11 @@ def processThreePhaseInfo(plant: Plant):
             multi_output_old=[]
         else:
             multi_output_old=regCacheStack[-1]
+
+        # Check a couple of obvious data points to reject bad reads
+        if float(GEInv.modbus_version)>2 or GEInv.modbus_address>100 or GEInv.user_code>100 or GEInv.temp_inverter_heatsink>100:
+            logger.debug("Dodgy Data so using last cache...")
+            return multi_output_old
 
         # If System Time is wrong (default date) use last good time or local time if all else fails
         if GEInv.system_time.year == 2000:
@@ -1856,6 +1944,18 @@ def getCache():     # Get latest cache data and return it (for use in REST)
         regCacheStack = GivLUT.get_regcache()
         if regCacheStack:
             multi_output = regCacheStack[-1]
+            inv=multi_output['raw']['invertor']
+            for reg in inv:
+                if isinstance(inv[reg],TimeSlot):
+                    inv[reg]= [inv[reg].start.isoformat(),inv[reg].end.isoformat()]
+                #elif not isinstance(inv[reg],(str,int,float)):
+                elif isinstance(inv[reg],list):
+                    inv[reg]=inv[reg]
+                elif hasattr(inv[reg],"name"):
+                    inv[reg]=inv[reg].name.capitalize()
+                else:
+                        inv[reg]= str(inv[reg])
+            multi_output['raw']['invertor']=inv
             return json.dumps(multi_output, indent=4, sort_keys=True, default=str)
         else:
             multi_output['result']="No register data cache exists, try again later"
