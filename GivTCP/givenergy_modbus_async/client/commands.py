@@ -53,6 +53,7 @@ class RegisterMap:
     BATTERY_CHARGE_LIMIT = 111
     BATTERY_DISCHARGE_LIMIT = 112
     BATTERY_DISCHARGE_MIN_POWER_RESERVE = 114
+    TPH_BATTERY_DISCHARGE_MIN_POWER_RESERVE = 1078
     CHARGE_TARGET_SOC = 116
     TPH_CHARGE_TARGET_SOC = 1111
     REBOOT = 163
@@ -557,16 +558,15 @@ def set_battery_discharge_limit_ac(val: int, inv_type: str="") -> list[Transpare
         raise ValueError(f"Specified Discharge Limit ({val}%) is not in [0-100]%")
     return [WriteHoldingRegisterRequest(reg, val)]
 
-def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
+def set_battery_power_reserve(val: int, inv_type: str="") -> list[TransparentRequest]:
     """Set the battery power reserve to maintain."""
     # TODO what are valid values?
+    reg=getattr(RegisterMap, f'{"TPH_" if "3ph" in inv_type else ""}BATTERY_DISCHARGE_MIN_POWER_RESERVE')
     val = int(val)
     if not 4 <= val <= 100:
         raise ValueError(f"Battery power reserve ({val}) must be in [4-100]%")
     return [
-        WriteHoldingRegisterRequest(
-            RegisterMap.BATTERY_DISCHARGE_MIN_POWER_RESERVE, val
-        )
+        WriteHoldingRegisterRequest(reg, val)
     ]
 
 def set_eco_mode(enabled: bool) -> list[TransparentRequest]:

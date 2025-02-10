@@ -275,6 +275,16 @@ def setBattCut():
     return response("setBatteryCutoff")
 
 
+@giv_api.route('/setChargeRateAC', methods=['POST'])
+def setChrgeRateAC():
+    """Set Battery charge rate in percentage
+
+    Payload: {'chargeRate':'75'}
+    """
+    payload = request.get_json(silent=True, force=True)
+    requestcommand("setChargeRateAC",payload)
+    return response("setChargeRateAC")
+
 @giv_api.route('/setChargeRate', methods=['POST'])
 def setChrgeRate():
     """Set Battery charge rate in watts
@@ -303,6 +313,15 @@ def setExpLim():
     requestcommand("setExportLimit",payload)
     return response("setExportLimit")
 
+@giv_api.route('/setDischargeRateAC', methods=['POST'])
+def setDischrgeRateAC():
+    """Set Battery discharge rate in percentage
+
+    Payload: {'dischargeRate':'75'}
+    """
+    payload = request.get_json(silent=True, force=True)
+    requestcommand("setDischargeRateAC",payload)
+    return response("setDischargeRateAC")
 
 @giv_api.route('/setDischargeRate', methods=['POST'])
 def setDischrgeRate():
@@ -746,8 +765,8 @@ def getapicalls():
     return output
 
 def start():
-    #getapicalls()
-    getAll()
+    getapicalls()
+    #getAll()
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:

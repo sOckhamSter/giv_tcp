@@ -89,8 +89,19 @@ def updateControlCache(entity,value,isTime: bool=False):
         logger.debug("Pushing control update to pkl cache: "+entity+" - "+str(value))
     return
 
+def log_num_writes(increment: int):
+    count=0
+    if exists(GivLUT.writecountpkl):
+        with open(GivLUT.writecountpkl, 'rb') as inp:
+            count = pickle.load(inp)
+    count=count+increment
+    # write data to pickle
+    with open(GivLUT.writecountpkl, 'wb') as outp:
+        pickle.dump(count, outp, pickle.HIGHEST_PROTOCOL)
+
 async def sendAsyncCommand(reqs,readloop):
     output={}
+    log_num_writes(len(reqs))
     asyncclient=await GivClientAsync.get_connection()
     if not asyncclient.connected:
         logger.info("Write client not connected after import")

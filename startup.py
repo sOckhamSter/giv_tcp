@@ -383,12 +383,15 @@ if isAddon:
     i=0
     for interface in hostDetails['data']['interfaces']:
         if not interface['ipv4']['address'] == []:
-            logger.debug("ipv4 Interface= "+str(interface['ipv4']['address']))
+            logger.debug("ipv4 Address= "+str(interface['ipv4']['address']))
             ip=str(interface['ipv4']['address']).split('/')[0][2:]
             mask=str(interface['ipv4']['address']).split('/')[1][:-2]
+
             hostIP=ip
-            networks[i]=str(interface['ipv4']['address'][0])
-            #networks[i]=interface['ipv4']['gateway']+"/"+str(mask)
+            if mask=="32":
+                networks[i]=ip+"/24"
+            else:
+                networks[i]=str(interface['ipv4']['address'][0])
             logger.info("Network Found: "+str(networks[i]))
         i=i+1
 else:
@@ -630,7 +633,7 @@ for inv in range(1,6):
         #  Always delete lockfiles and FCRunning etc... but only delete pkl if too old?
         for file in os.listdir(setts["cache_location"]):
             filename = os.fsdecode(file)
-            if not filename.__contains__("log") and not filename.startswith("rateData") and not filename.startswith(".dayRate") and not filename.startswith(".nightRate") and not filename.startswith("allsettings") and not filename.startswith("v2env") and not filename.startswith(".v3upgrade"):
+            if not filename.__contains__("log") and not filename.startswith("rateData")and not filename.startswith("writecount") and not filename.startswith(".dayRate") and not filename.startswith(".nightRate") and not filename.startswith("allsettings") and not filename.startswith("v2env") and not filename.startswith(".v3upgrade"):
                 os.remove(setts['cache_location']+"/"+file)
         if exists(setts["cache_location"]+"/rateData_"+str(inv)+".pkl"):
             timezone=zoneinfo.ZoneInfo(key=setts["timezone"])

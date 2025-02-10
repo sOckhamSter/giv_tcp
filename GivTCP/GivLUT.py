@@ -188,6 +188,7 @@ class GivLUT:
     batterypkl=GiV_Settings.cache_location+"/battery_"+str(GiV_Settings.givtcp_instance)+".pkl"
     reservepkl=GiV_Settings.cache_location+"/reserve_"+str(GiV_Settings.givtcp_instance)+".pkl"
     rawpkl=GiV_Settings.cache_location+"/rawdata_"+str(GiV_Settings.givtcp_instance)+".pkl"
+    writecountpkl=GiV_Settings.cache_location+"/writecount_"+str(GiV_Settings.givtcp_instance)+".pkl"
     ppkwhtouch=".ppkwhtouch"
     schedule=".schedule"
     oldDataCount=GiV_Settings.cache_location+"/oldDataCount_"+str(GiV_Settings.givtcp_instance)+".pkl"

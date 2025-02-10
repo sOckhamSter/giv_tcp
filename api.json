@@ -192,6 +192,12 @@
             "usage": "Set Battery charge rate in watts",
             "payload": "{'chargeRate':'2500'}"
         },
+        "setChargeRateAC": {
+            "url": "/setChargeRateAC",
+            "method": "POST",
+            "usage": "Set Battery charge rate in percentage",
+            "payload": "{'chargeRate':'75'}"
+        },
         "setDateTime": {
             "url": "/setDateTime",
             "method": "POST",
@@ -233,6 +239,12 @@
             "method": "POST",
             "usage": "Set Battery discharge rate in watts",
             "payload": "{'dischargeRate':'2500'}"
+        },
+        "setDischargeRateAC": {
+            "url": "/setDischargeRateAC",
+            "method": "POST",
+            "usage": "Set Battery discharge rate in percentage",
+            "payload": "{'dischargeRate':'75'}"
         },
         "setExportSlot1": {
             "url": "/setExportSlot1",

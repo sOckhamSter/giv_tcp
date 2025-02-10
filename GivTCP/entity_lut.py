@@ -14,6 +14,7 @@ class Entity_Type():
         "Last_Updated_Time":GEType("sensor","timestamp","","","",False,False,False),
         "Time_Since_Last_Update":GEType("sensor","","",0,10000,True,False,False),
         "status":GEType("sensor","string","","","",False,False,False),
+        "Write_Count":GEType("sensor","number","",0,1000000,False,False,False),
         "Timeout_Error":GEType("sensor","string","","","",False,False,False),
         "GivTCP_Version":GEType("sensor","string","","","",False,False,False),
         "Stack_Firmware":GEType("sensor","string","","","",False,False,False),
