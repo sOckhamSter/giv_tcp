@@ -757,10 +757,10 @@ def processInverterInfo(plant: Plant):
             inverter['Invertor_Time'] = finditem(multi_output_old,"Invertor_Time")
             if inverter['Invertor_Time']==None:
             # Unless its missing then use now()
-                inverter['Invertor_Time']=datetime.datetime.now(GivLUT.timezone).isoformat()
+                inverter['Invertor_Time']=datetime.datetime.now(GivLUT.timezone).isoformat(timespec='seconds')
         else:
             # Use latest data if its not default date
-            inverter['Invertor_Time'] = GEInv.system_time.replace(tzinfo=GivLUT.timezone).isoformat()
+            inverter['Invertor_Time'] = GEInv.system_time.replace(tzinfo=GivLUT.timezone).isoformat(timespec='seconds')
         inv_time=datetime.datetime.strptime(inverter['Invertor_Time'], '%Y-%m-%dT%H:%M:%S%z')
 
     ############  Energy Stats    ############
@@ -1434,10 +1434,10 @@ def processThreePhaseInfo(plant: Plant):
             inverter['Invertor_Time'] = finditem(multi_output_old,"Invertor_Time")
             if inverter['Invertor_Time']==None:
             # Unless its missing then use now()
-                inverter['Invertor_Time']=datetime.datetime.now(GivLUT.timezone).isoformat()
+                inverter['Invertor_Time']=datetime.datetime.now(GivLUT.timezone).isoformat(timespec='seconds')
         else:
             # Use latest data if its not default date
-            inverter['Invertor_Time'] = GEInv.system_time.replace(tzinfo=GivLUT.timezone).isoformat()
+            inverter['Invertor_Time'] = GEInv.system_time.replace(tzinfo=GivLUT.timezone).isoformat(timespec='seconds')
         inv_time=datetime.datetime.strptime(inverter['Invertor_Time'], '%Y-%m-%dT%H:%M:%S%z')
 
     #    if GiV_Settings.Print_Raw_Registers:
