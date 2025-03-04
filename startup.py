@@ -649,6 +649,7 @@ for inv in range(1,6):
         # Check if settings.py exists then start processes  #
         # Still need to run the below process per inverter  #
         #####################################################
+        
         logger.info("==============================================================")
         logger.info("====             Web Gui Config is at                     ====")
         logger.info("====     http://"+str(hostIP)+":8099/config.html             ====")

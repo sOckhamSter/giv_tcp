@@ -685,6 +685,15 @@ def setSCChrg():
     requestcommand("setACCharge",payload['state'])
     return response("setACCharge")
 
+@giv_api.route('/setEmsPlant', methods=['POST'])
+def setEMSPlnt():
+    """Enables AC Charge on Three Phase Inverters
+
+    Payload: {'state':'enabled' or "disabled'}
+    """
+    payload = request.get_json(silent=True, force=True)
+    requestcommand("setEmsPlant",payload['state'])
+    return response("setEmsPlant")
 
 @giv_api.route('/setChargeControl', methods=['POST'])
 def chrgeControl():

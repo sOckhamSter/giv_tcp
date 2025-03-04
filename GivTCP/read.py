@@ -703,6 +703,19 @@ def getControls(plant,regCacheStack, inverterModel,multi_output_old=None):
     controlmode['Target_SOC'] = target_soc
     controlmode['Sync_Time'] = "disable"
 
+    if not GEInv.rtc_enable == Enable.UNKNOWN:
+        controlmode['Real_Time_Control'] = GEInv.rtc_enable.name.lower()
+        if GEInv.rtc_enable == Enable.ENABLE:
+            open(GivLUT.rtc_enabled,'w').close()
+        else:
+            if exists(GivLUT.rtc_enabled):
+                os.remove(GivLUT.rtc_enabled)
+    else:
+        controlmode['Real_Time_Control'] = "disable"
+        if exists(GivLUT.rtc_enabled):
+            os.remove(GivLUT.rtc_enabled)
+
+
     if not GEInv.battery_pause_mode==None:    #Not in AC single phase
         controlmode['Battery_pause_mode'] = GivLUT.battery_pause_mode[int(GEInv.battery_pause_mode)]
 
@@ -1776,11 +1789,11 @@ def processThreePhaseInfo(plant: Plant):
         power_output['Export_Phase2_Power']=GEInv.p_out_ac2
         power_output['Export_Phase3_Power']=GEInv.p_out_ac3
         power_output['PV_Voltage_String_1']=GEInv.v_pv1
-        power_output['PV_Voltage_String_1']=GEInv.v_pv2
+        power_output['PV_Voltage_String_2']=GEInv.v_pv2
         power_output['PV_Current_String_1']=GEInv.i_pv1
-        power_output['PV_Current_String_1']=GEInv.i_pv2
+        power_output['PV_Current_String_2']=GEInv.i_pv2
         power_output['PV_Power_String_1']=GEInv.p_pv1
-        power_output['PV_Power_String_1']=GEInv.p_pv2
+        power_output['PV_Power_String_2']=GEInv.p_pv2
         power_output['PV_Power']=GEInv.p_pv1+GEInv.p_pv2
         power_output['PV_Current']=GEInv.i_pv1+GEInv.i_pv2
         power_output['Grid_Phase1_Voltage']=GEInv.v_ac1
@@ -1929,6 +1942,12 @@ def processData(plant: Plant):
             with open(GivLUT.writecountpkl, 'rb') as inp:
                 count = pickle.load(inp)
         givtcpdata['Write_Count']= count
+        
+        safecount=0
+        if exists(GivLUT.safewritecountpkl):
+            with open(GivLUT.safewritecountpkl, 'rb') as inp:
+                safecount = pickle.load(inp)
+        givtcpdata['Safe_Write_Count']= safecount
 
         multi_output['Stats']=givtcpdata
         regCacheStack = GivLUT.get_regcache()
@@ -2385,14 +2404,14 @@ def ratecalcs(multi_output, multi_output_old):
             # Add change in energy this slot to previous rate_data
             rate_data['Night_Energy_kWh'] = import_energy-rate_data['Night_Start_Energy_kWh']
             logger.debug("Night_Energy_kWh=" +str(import_energy)+" - "+str(rate_data['Night_Start_Energy_kWh']))
-            rate_data['Night_Cost'] = float(rate_data['Night_Energy_kWh'])*float(GiV_Settings.night_rate)
+            rate_data['Night_Cost'] = round(float(rate_data['Night_Energy_kWh'])*float(GiV_Settings.night_rate),2)
             logger.debug("Night_Cost= "+str(rate_data['Night_Energy_kWh'])+"kWh x £"+str(float(GiV_Settings.night_rate))+"/kWh = £"+str(rate_data['Night_Cost']))
             rate_data['Current_Rate'] = GiV_Settings.night_rate
         else:
             logger.debug("Current Tariff is Day, calculating stats...")
             rate_data['Day_Energy_kWh'] = import_energy-rate_data['Day_Start_Energy_kWh']
             logger.debug("Day_Energy_kWh=" + str(import_energy)+" - "+str(rate_data['Day_Start_Energy_kWh']))
-            rate_data['Day_Cost'] = float(rate_data['Day_Energy_kWh'])*float(GiV_Settings.day_rate)
+            rate_data['Day_Cost'] = round(float(rate_data['Day_Energy_kWh'])*float(GiV_Settings.day_rate),2)
             logger.debug("Day_Cost= "+str(rate_data['Day_Energy_kWh'])+"kWh x £"+str(float(GiV_Settings.day_rate))+"/kWh = £"+str(rate_data['Day_Cost']))
             rate_data['Current_Rate'] = GiV_Settings.day_rate
 

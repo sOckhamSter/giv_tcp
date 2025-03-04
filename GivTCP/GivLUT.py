@@ -52,10 +52,10 @@ class maxvalues:
     single_phase={
         'maxInvPower':20000,
         'maxPower':20000,
-        'maxBatPower':6200,
+        'maxBatPower':13000,
         '-maxInvPower':-20000,
         '-maxPower':-20000,
-        '-maxBatPower':-6200,
+        '-maxBatPower':-13000,
         'maxExport':20000,
         'maxTemp':100,
         '-maxTemp':-100,
@@ -188,7 +188,9 @@ class GivLUT:
     batterypkl=GiV_Settings.cache_location+"/battery_"+str(GiV_Settings.givtcp_instance)+".pkl"
     reservepkl=GiV_Settings.cache_location+"/reserve_"+str(GiV_Settings.givtcp_instance)+".pkl"
     rawpkl=GiV_Settings.cache_location+"/rawdata_"+str(GiV_Settings.givtcp_instance)+".pkl"
+    rtc_enabled=".rtcenabled"
     writecountpkl=GiV_Settings.cache_location+"/writecount_"+str(GiV_Settings.givtcp_instance)+".pkl"
+    safewritecountpkl=GiV_Settings.cache_location+"/safewritecount_"+str(GiV_Settings.givtcp_instance)+".pkl"
     ppkwhtouch=".ppkwhtouch"
     schedule=".schedule"
     oldDataCount=GiV_Settings.cache_location+"/oldDataCount_"+str(GiV_Settings.givtcp_instance)+".pkl"
@@ -213,6 +215,7 @@ class GivLUT:
         "Import_Power":"p_grid_out",
         "Export_Power":"p_grid_out"
     }
+    safe_regs=[20,27,50,56,57,59,94,95,96,110,111,112,116,318,319,320,1002,1108,1110,1111,1112,1114,1118,1119,1122,1123,1141]
     delay_times=["Normal","Running","Cancel","2","5","10","15","30","45","60","75","90","105","120","135","150","165","180"]
     modes=["Eco","Eco (Paused)","Timed Demand","Timed Export","Unknown"]
     rates=["Day","Night"]

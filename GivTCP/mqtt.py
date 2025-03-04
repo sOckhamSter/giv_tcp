@@ -151,9 +151,17 @@ class GivMQTT():
                 payload['dischargeRate']=str(message.payload.decode("utf-8"))
                 #wr.setDischargeRateAC(payload)
                 requestcommand(command,payload)
+            elif command=="enableRTC":
+                payload['state']=str(message.payload.decode("utf-8"))
+                #wr.setChargeRateAC(payload)
+                requestcommand(command,payload)
             elif command=="setChargeRateAC":
                 payload['chargeRate']=str(message.payload.decode("utf-8"))
                 #wr.setChargeRateAC(payload)
+                requestcommand(command,payload)
+            elif command=="setEmsPlant":
+                payload['state']=str(message.payload.decode("utf-8"))
+                #wr.enableChargeSchedule(payload)
                 requestcommand(command,payload)
             elif command=="syncDateTime":
                 payload['state']=str(message.payload.decode("utf-8"))

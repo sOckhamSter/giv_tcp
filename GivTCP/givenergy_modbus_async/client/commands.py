@@ -57,6 +57,7 @@ class RegisterMap:
     CHARGE_TARGET_SOC = 116
     TPH_CHARGE_TARGET_SOC = 1111
     REBOOT = 163
+    ENABLE_RTC = 166
     CHARGE_TARGET_SOC_1 = 242
     CHARGE_SLOT_2_START = 243
     CHARGE_SLOT_2_END = 244
@@ -179,9 +180,11 @@ class RegisterMap:
     TPH_DISCHARGE_SLOT_10_END = 298
     TPH_DISCHARGE_TARGET_SOC_10 = 299
     # End of duplicates
+    TPH_ENABLE_RTC = 166
     AC_CHARGE_ENABLE= 1112
     FORCE_DISCHARGE_ENABLE = 1122
     FORCE_CHARGE_ENABLE = 1123
+    EMS_PLANT_ENABLE = 2040
     EMS_DISCHARGE_SLOT_1_START = 2044
     EMS_DISCHARGE_SLOT_1_END = 2045
     EMS_DISCHARGE_TARGET_SOC_1 = 2046
@@ -367,6 +370,11 @@ def enable_charge_target() -> list[TransparentRequest]:
         WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, True),
     ]
 
+def set_ems_plant(enable:bool) -> list[TransparentRequest]:
+    """Enables AC SOC limit."""
+    return [
+        WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, enable),
+    ]
 
 def set_charge_target(target_soc: int, inv_type: str="") -> list[TransparentRequest]:
     """Sets inverter to stop charging when SOC reaches the desired level. Also referred to as "winter mode"."""
@@ -409,6 +417,14 @@ def set_charge_target_only(target_soc: int, inv_type: str="") -> list[Transparen
     if not 4 <= target_soc <= 100:
         raise ValueError(f"Specified SOC Limit ({target_soc}%) is not in [0-100]%")
     return [WriteHoldingRegisterRequest(reg, target_soc)]
+
+
+def set_enable_rtc(enabled: bool, inv_type: str="") -> list[TransparentRequest]:
+    """Enable the Real Time Control resgister to write to EEPROM."""
+    reg=getattr(RegisterMap, f'{"TPH_" if "3ph" in inv_type else ""}ENABLE_RTC')
+    return [WriteHoldingRegisterRequest(reg, enabled)]
+
+
 
 def set_enable_charge(enabled: bool, inv_type: str="") -> list[TransparentRequest]:
     """Enable the battery to charge, depending on the mode and slots set."""
@@ -457,6 +473,8 @@ def set_calibrate_battery_soc(val: int) -> list[TransparentRequest]:
         return [
             WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, val),
         ]
+
+
 
 
 @deprecated("use set_enable_charge(True) instead")
